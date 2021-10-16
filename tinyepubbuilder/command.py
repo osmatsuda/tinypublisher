@@ -2,11 +2,10 @@ import sys, argparse
 
 """
 tinyepubbuilder front end tool
-"""
 
-usage = """Usage: tinyepubbuild [-z] <output-name> [-c <cover-image>] [-t <title>]
+Usage: tinyepubbuild [-z] <package-name> [-c <cover-image>] [-t <title>]
 Description:
-    This is a tool to buid epub from a formatted file-list reading from stdin.
+    This is a tool to buid epub from a formatted file-list readable on the standard input.
 
 Options:
     -z, --zipped
@@ -25,13 +24,27 @@ File-list format:
         Other each media file is embedded in a XHTML file. If you want to embed
         that SVG into XHTML, you should add a caption.
     ">" [ <index-title> ]
-        A marker which indicates that document linked from a table of contents.
-        If there is no index title ("-"), the basename of the file is used as the index title.
+        A ">" marker which indicates that document linked from a table of contents.
+        If there is no index title ("-"), the content dosument's title or 
+        the basename of the file is used as the index title.
 """
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog='tinyepubbuild',
+        description='This is a tool to buid epub from a formatted file-list readable on the standard input.')
+    
+    parser.add_argument('-z', '--zipped', action='store_true',
+                        help='make a zipped package: <package-name>.epub')
+    parser.add_argument('package-name', help='EPUB Package directory')
+    parser.add_argument('-c', '--cover', nargs=1, metavar='cover-image')
+    parser.add_argument('-t', '--title', nargs=1, metavar='title')
+    return parser.parse_args()
+
 def main():
-    print(sys.argv[1:])
-    print(usage)
+    args = parse_args()
+    print(args)
+    print(sys.stdin.read())
     
 if __name__ == '__main__':
     main()

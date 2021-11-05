@@ -1,5 +1,5 @@
-01.png	>the first page
-02.png
+01.png	>The first page
+02.xhtml
 03.svg	>-
-04.png		Something image caption
-05.png	>the last page	Goodbye<br/>Sayoonara
+04.svg		Embedded SVG in XHTML
+05.png	>The last page	Goodbye<br/>Sayoonara

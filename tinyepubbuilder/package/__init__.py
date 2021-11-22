@@ -3,23 +3,24 @@ from argparse import Namespace
 from typing import Optional
 
 
-SUPPORTED_MEDIA_TYPES = {
+SUPPORTED_CONTENT_MEDIA_TYPES = {
     'image/gif',
     'image/jpeg',
     'image/png',
     'image/svg+xml',
-    'text/css',
     'application/xhtml+xml',
-    'application/javascript',
-    'text/javascript'
 }
 
+
 @dataclass
-class _SpineItem:
+class SpineItem:
     content_document: str
+    media_type: str
     index_title: Optional[str] = None
     content_caption: Optional[str] = None
-    
+    content_size: Optional[tuple[int, int]] = None
+    content_linked: Optional[list[str]] = None
+
 class PackageSpec:
     def append_spine_item(self, **dict_args) -> None:
         pass

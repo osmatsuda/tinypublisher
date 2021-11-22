@@ -1,5 +1,7 @@
-.DS_Store
 idea/
 examples/
 build/
 *.egg-info/
+*.png
+*.jpg
+*.gif

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1"
+     xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="300" height="600"
+     preserveAspectRatio="xMidYMid meet"
+     viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="Gradient" gradientUnits="userSpaceOnUse"
+                    x1="0" y1="0" x2="1024" y2="0">
+      <stop offset="0" stop-color="red"/>
+      <stop offset=".2" stop-color="orange"/>
+      <stop offset=".4" stop-color="yellow"/>
+      <stop offset=".6" stop-color="green"/>
+      <stop offset=".8" stop-color="blue"/>
+      <stop offset="1" stop-color="violet"/>
+    </linearGradient>
+    <mask id="Mask" maskUnits="userSpaceOnUse">
+      <text id="Text" x="512" y="512" text-anchor="middle" dominant-baseline="central" textLength="900"
+	    fill="white"
+	    font-family="sans-serif" font-size="300" font-weight="bolder" font-stretch="condensed">
+	04.svg
+      </text>
+    </mask>
+  </defs>
+  <circle cx="512" cy="512" r="512" fill="url(#Gradient)" mask="url(#Mask)"/>
+  <image xlink:href="star.gif" x="312" y="100" width="400" height="200"/>
+</svg>

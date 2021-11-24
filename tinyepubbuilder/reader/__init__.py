@@ -1,12 +1,16 @@
 import io, csv, mimetypes, re
-from pathlib import Path
 import xml.etree.ElementTree as ET
-import magic
-
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, Any
+import magic
 
+import tinyepubbuilder as app
 from tinyepubbuilder.package import PackageSpec, SUPPORTED_CONTENT_MEDIA_TYPES
+
+import logging
+logger = logging.getLogger(f'{app.__appname__}.reader')
+
 
 @dataclass
 class _State:
@@ -62,6 +66,7 @@ class ReaderError(BaseError):
     def __init__(self, message: str, state: _State):
         super().__init__(message, f'pos: {state.row},{state.col}')
 
+        
 CONTENT_DOCUMENT_MEDIA_TYPES = set(['image/svg+xml', 'application/xhtml+xml'])
         
 def _check_file_type(path: str, state: _State) -> _Spine:
@@ -103,38 +108,60 @@ class ContentDocumentError(Exception):
         super().__init__(message, f'line: {state.row}')
 
 def _check_content_document(doc_path: str, mime: str) -> _Spine:
+    logger.info(f'checking "{doc_path}"')
+
     tree = ET.parse(doc_path)
     root = tree.getroot()
+    links = []
     if mime.endswith('xhtml+xml'):
-        _paths = _find_linked_in_xhtml(root)
+        linkes = _find_linked_in_xhtml(root)
     elif mime.endswith('svg+xml'):
-        _paths = _find_linked_in_svg(root)
-    else:
-        _paths = []
+        links = _find_linked_in_svg(root)
 
-    current = Path(doc_path)
-    re_invalid = re.compile(f'^(?:http|mailto|urn):|({current.name})?#')
-    paths = []
-    for p in _paths:
-        if re_invalid.search(p):
-            # warn foreign resource
+    links = _validated_links(linkes, Path(doc_path))
+    return _Spine({'content_linked': links}) if links else {}
+
+
+def _validated_links(uris: list[str], current: Path) -> list[str]:
+    re_invalid = re.compile(f'^(?:https?|mailto|urn):|({current.name})?#')
+    re_foreign = re.compile('^https?:')
+    links = set()
+    for uri in uris:
+        if re_invalid.search(uri):
+            if re_foreign.search(uri):
+                logger.warn(f'''"{current}" contains a foreign resource ({uri})
+  {app.__appname__} doesn't treat this''')
             continue
-        pp = current.parent.joinpath(p).resolve()
-        if not pp.is_file():
-            # warn p doesn't exist
+        path = current.parent.joinpath(uri).resolve()
+        if not path.is_file():
+            logger.warn(f'"{current}" containts a nonexistant link ({uri})')
             continue
 
-        paths.append(p)
-        p_mime = magic.from_file(str(pp), mime=True)
-        if p_mime == 'text/xml':
-            p_mime, _ = mimetypes.guess_type(pp)
-        if p_mime in CONTENT_DOCUMENT_MEDIA_TYPES:
-            rp = _check_content_document(str(pp), p_mime)
-            if rp:
-                paths.append(rp)
+        links.add(str(path.absolute()))
+        additionals: list[str] = []
+        mime = magic.from_file(str(path), mime=True)
+        if mime in {'text/xml', 'text/plain'}:
+            mime, _ = mimetypes.guess_type(path)
+        if mime in CONTENT_DOCUMENT_MEDIA_TYPES:
+            spine = _check_content_document(str(path), mime)
+            if spine.__contains__('content_linked'):
+                additionals = spine['content_linked']
+        elif mime == 'text/css':
+            additionals = _find_linked_in_css(path)
+        if additionals:
+            links = links | set(additionals)
 
-    return _Spine({'content_linked': paths}) if paths else {}
+    return list(links)
 
+def _find_linked_in_css(path: Path) -> list[str]:
+    re_url = re.compile('url\("?([^\("]+)"?\)')
+    links = set()
+    with open(path) as f:
+        for line in f:
+            links |= set(re_url.findall(line))
+
+    return _validated_links(list(links), path)
+    
 def _find_linked_in_xhtml(root: ET.Element) -> list[str]:
     re_href = re.compile('\{.+\}link')
     re_src = re.compile('\{.+\}(?:script|img|embed|iframe|source)')
@@ -143,13 +170,17 @@ def _find_linked_in_xhtml(root: ET.Element) -> list[str]:
     for elm in root.findall('.//*'):
         ref = ''
         if re_href.match(elm.tag):
-            if elm.attrib.get('rel').find('stylesheet') < 0:
+            rel = elm.attrib.get('rel')
+            if rel and rel.find('stylesheet') < 0:
                 continue
-            ref = elm.attrib.get('href')
+            if elm.__contains__('href'):
+                ref = elm.attrib['href']
         elif re_src.match(elm.tag):
-            ref = elm.attrib.get('src')
+            if elm.__contains__('src'):
+                ref = elm.attrib['src']
         elif re_data.match(elm.tag):
-            ref = elm.attrib.get('data')
+            if elm.__contains__('data'):
+                ref = elm.attrib['data']
 
         if ref:
             paths.append(ref)
@@ -162,3 +193,4 @@ def _find_linked_in_svg(root: ET.Element) -> list[str]:
         if ref:
             paths.append(ref)
     return paths
+

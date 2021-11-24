@@ -2,6 +2,7 @@ import sys, argparse
 
 import tinyepubbuilder.reader
 import tinyepubbuilder.builder
+from tinyepubbuilder import __logger__
 
 """
 tinyepubbuilder front end tool

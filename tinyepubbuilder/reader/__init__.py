@@ -25,8 +25,8 @@ class _State:
 _Spine = dict[str, Any]
 
 class FileListParser:
-    def __init__(self):
-        self.status = None
+    def __init__(self, curdir='.'):
+        self.curdir = Path(curdir)
 
     def parse(self, fileobj: io.TextIOBase) -> PackageSpec:
         lines = csv.reader(fileobj, delimiter="\t")
@@ -45,15 +45,24 @@ class FileListParser:
     def parseEntry(self, entry: list[str], state: _State) -> _Spine:
         spine: _Spine = {}
 
-        path = entry[state.col]
-        spine['content_document'] = path
+        path = (self.curdir / entry[state.col]).resolve()
+        spine['content_document'] = str(path)
         spine |= _check_file_type(path, state)
 
         state.succ_col()
-        spine['index_title'] = entry[state.col] if len(entry) > state.col else ''
+        index_title = entry[state.col] if len(entry) > state.col else '-'
+        if index_title == '-' or index_title == '':
+            if spine.__contains__('content_title'):
+                index_title = spine['content_title']
+            else:
+                index_title = path.stem
+        spine['index_title'] = index_title
 
         state.succ_col()
-        spine['content_caption'] = entry[state.col] if len(entry) > state.col else ''
+        content_caption = entry[state.col] if len(entry) > state.col else ''
+        if content_caption == '-' and spine.__contains__('content_title'):
+            content_caption = spine['content_title']
+        spine['content_caption'] = content_caption
 
         return spine
 
@@ -69,16 +78,16 @@ class ReaderError(BaseError):
         
 CONTENT_DOCUMENT_MEDIA_TYPES = set(['image/svg+xml', 'application/xhtml+xml'])
         
-def _check_file_type(path: str, state: _State) -> _Spine:
-    if not Path(path).is_file():
-        raise ReaderError(f'{path} should points a regular file.', state)
+def _check_file_type(path: Path, state: _State) -> _Spine:
+    if not path.is_file():
+        raise ReaderError(f'"{path}" is nonexist or not a regular file.', state)
 
-    mime = magic.from_file(path, mime=True)
+    mime = magic.from_file(str(path), mime=True)
     if mime == 'text/xml':
         mime, _ = mimetypes.guess_type(path)
         
     if mime not in SUPPORTED_CONTENT_MEDIA_TYPES:
-        raise ReaderError(f'The file type of {path} is not supported.', state)
+        raise ReaderError(f'The file type of "{path}" is not supported.', state)
 
     spine = _Spine({'media_type': mime}) 
 
@@ -86,7 +95,7 @@ def _check_file_type(path: str, state: _State) -> _Spine:
         spine |= _check_content_document(path, mime)
 
     if mime.startswith('image/'):
-        spine |= _image_size(magic.from_file(path))
+        spine |= _image_size(magic.from_file(str(path)))
 
     return spine
 
@@ -99,7 +108,7 @@ def _image_size(spec: Optional[str]) -> _Spine:
     for c in spec.split(','):
         m = r.match(c)
         if m:
-            spine['content-size'] = (int(m.group(1)), int(m.group(2)))
+            spine['content_size'] = (int(m.group(1)), int(m.group(2)))
     return spine
         
 
@@ -107,47 +116,59 @@ class ContentDocumentError(Exception):
     def __init__(self, message: str, state):
         super().__init__(message, f'line: {state.row}')
 
-def _check_content_document(doc_path: str, mime: str) -> _Spine:
-    logger.info(f'checking "{doc_path}"')
+def _check_content_document(path: Path, mime: str) -> _Spine:
+    logger.info(f'checking "{path.name}"')
 
-    tree = ET.parse(doc_path)
+    tree = ET.parse(path)
     root = tree.getroot()
     links = []
+    title = root.find('.//{*}title')
+
     if mime.endswith('xhtml+xml'):
-        linkes = _find_linked_in_xhtml(root)
+        links = _find_linked_in_xhtml(root)
     elif mime.endswith('svg+xml'):
         links = _find_linked_in_svg(root)
 
-    links = _validated_links(linkes, Path(doc_path))
-    return _Spine({'content_linked': links}) if links else {}
+    links = _validated_links(links, path)
+    spine = _Spine({'content_includes': links}) if links else {}
+    if title is not None and title.text:
+        spine['content_title'] = title.text.strip()
+    return spine
 
 
 def _validated_links(uris: list[str], current: Path) -> list[str]:
     re_invalid = re.compile(f'^(?:https?|mailto|urn):|({current.name})?#')
     re_foreign = re.compile('^https?:')
     links = set()
+
     for uri in uris:
         if re_invalid.search(uri):
             if re_foreign.search(uri):
-                logger.warn(f'''"{current}" contains a foreign resource ({uri})
+                logger.warn(f'''"{current}" contains a foreign resource
+  -- {uri}
   {app.__appname__} doesn't treat this''')
             continue
+        
         path = current.parent.joinpath(uri).resolve()
         if not path.is_file():
-            logger.warn(f'"{current}" containts a nonexistant link ({uri})')
+            logger.warn(f'''"{current}" references to a nonexistant local file
+  -- {uri}''')
             continue
 
         links.add(str(path.absolute()))
         additionals: list[str] = []
         mime = magic.from_file(str(path), mime=True)
+
         if mime in {'text/xml', 'text/plain'}:
             mime, _ = mimetypes.guess_type(path)
+
         if mime in CONTENT_DOCUMENT_MEDIA_TYPES:
-            spine = _check_content_document(str(path), mime)
-            if spine.__contains__('content_linked'):
-                additionals = spine['content_linked']
+            spine = _check_content_document(path, mime)
+            if spine.__contains__('content_includes'):
+                additionals = spine['content_includes']
         elif mime == 'text/css':
             additionals = _find_linked_in_css(path)
+
         if additionals:
             links = links | set(additionals)
 
@@ -167,19 +188,20 @@ def _find_linked_in_xhtml(root: ET.Element) -> list[str]:
     re_src = re.compile('\{.+\}(?:script|img|embed|iframe|source)')
     re_data = re.compile('\{.+\}object')
     paths = []
+
     for elm in root.findall('.//*'):
         ref = ''
         if re_href.match(elm.tag):
             rel = elm.attrib.get('rel')
             if rel and rel.find('stylesheet') < 0:
                 continue
-            if elm.__contains__('href'):
+            if elm.attrib.__contains__('href'):
                 ref = elm.attrib['href']
         elif re_src.match(elm.tag):
-            if elm.__contains__('src'):
+            if elm.attrib.__contains__('src'):
                 ref = elm.attrib['src']
         elif re_data.match(elm.tag):
-            if elm.__contains__('data'):
+            if elm.attrib.__contains__('data'):
                 ref = elm.attrib['data']
 
         if ref:

@@ -38,8 +38,9 @@ File-list format:
         If it is specified to "-", the content document's title or the basename
         of the file is used as the index title.
     <content-caption>
-        If it is specified to "-" and the <path> points to a SVG file, a SVG's
-        title or description content is used.
+        When the <path> points to a SVG and this cell is specified, the SVG is
+        embedded in a XHTML file. Then, if it is "-", this value is the SVG's
+        title data or the basename of the file.
 """
 
 def arg_parser():

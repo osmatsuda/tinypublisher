@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from argparse import Namespace
 from typing import Optional
 
@@ -16,16 +16,18 @@ SUPPORTED_CONTENT_MEDIA_TYPES = {
 class SpineItem:
     content_document: str
     media_type: str
-    index_title: Optional[str] = None
-    content_caption: Optional[str] = None
+    index_title: str
+    content_caption: str
     content_size: Optional[tuple[int, int]] = None
-    content_linked: Optional[list[str]] = None
+    content_includes: Optional[list[str]] = None
 
+
+@dataclass
 class PackageSpec:
-    def append_spine_item(self, **dict_args) -> None:
-        pass
+    spine: list[SpineItem] = field(default_factory=list)
     
-    def add_spec(self, name: str, args: Namespace) -> None: #failable
-        pass
+    def append_spine_item(self, **dargs) -> None:
+        items = {k: dargs[k] for k in SpineItem.__dataclass_fields__ if dargs.__contains__(k)} # type: ignore
+        self.spine.append(SpineItem(**items))
 
 

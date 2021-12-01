@@ -1,7 +1,7 @@
 from tinyepubbuilder.package import PackageSpec
 
 class PackageBuilder():
-    def __init__(self, pkg_name: str) -> None:
+    def __init__(self, pkgname: str) -> None:
         pass
 
     def make_package_dir(self) -> bool: # failable

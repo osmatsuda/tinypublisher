@@ -30,7 +30,7 @@ class FileListParser:
 
     def parse(self, fileobj: io.TextIOBase) -> PackageSpec:
         lines = csv.reader(fileobj, delimiter="\t")
-        spec = PackageSpec()
+        spec = PackageSpec(curdir=self.curdir)
         s = _State(0, 0)
         for entry in lines:
             if entry:
@@ -133,6 +133,11 @@ def _check_content_document(path: Path, mime: str) -> _Spine:
     spine = _Spine({'content_includes': links}) if links else {}
     if title is not None and title.text:
         spine['content_title'] = title.text.strip()
+
+    for key in root.attrib:
+        if key.endswith('lang'):
+            spine['content_lang'] = root.get(key)
+            break
     return spine
 
 

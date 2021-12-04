@@ -1,9 +1,9 @@
 import logging
 
 __version__ = "0.0.1"
+__appname__ = 'tinyepubbuilder'
 
 # Logger
-__appname__ = 'tinyepubbuilder'
 logger = logging.getLogger(__appname__)
 logger.setLevel(logging.INFO)
 _handler = logging.StreamHandler()

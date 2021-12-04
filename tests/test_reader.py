@@ -1,10 +1,14 @@
-import unittest
+import unittest, logging
 import pathlib, uuid
 
 import tinyepubbuilder.reader as r
 import tinyepubbuilder.package as p
 
 class TestFileListParser(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        r.logger.setLevel(logging.WARNING)
+        
     def setUp(self):
         self.curdir = pathlib.Path(__file__).parent / 'assets'
         self.parser = r.FileListParser(str(self.curdir))

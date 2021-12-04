@@ -7,17 +7,19 @@ from tinyepubbuilder import __logger__
 """
 tinyepubbuilder front end tool
 
-Usage: tinyepubbuild [-z] <package-name> \\
-       [-c <cover-image>] [-t <title>] [-l <language-tag>][--uuid <dns-name>]
+Usage: tinyepubbuild [--unzipped] <package-name> \\
+       [-c <cover-image>] [-t <title>] [-l <language-tag>] \\
+       [--id <identifier>] [--uuid <dns-name>]
 Description:
     This is a tool to buid epub from a formatted file-list readable on the
     standard input.
 
 Options:
-    -z, --zipped
+    --unzipped
     -c, --cover <cover-image>
     -t, --title <title>
     -l, --language <language-tag>
+    --id <identifier>
     --uuid <dns-name>
 """
 _FILE_LIST_DESCRIPTION_ = """\
@@ -49,8 +51,7 @@ def arg_parser():
         description='This is a tool to buid epub from a formatted file-list readable on the standard input.'
         epilog=_FILE_LIST_DESCRIPTION_)
     
-    parser.add_argument('-z', '--zipped', action='store_true',
-                        help='make a zipped package: <package-name>.epub')
+    parser.add_argument('--unzipped', action='store_true', help='make a package unzipped')
     parser.add_argument('packagename', metavar='package-name', help='EPUB Package directory')
     parser.add_argument('-c', '--cover', metavar='cover-image',
                         help='path to the cover-image')
@@ -76,10 +77,9 @@ def main():
         package_spec.uuid = args.uuid
 
         builder = builder.PackageBuilder(args.packagename)
-        builder.make_package_dir()
         builder.build_with(pakage_spec)
 
-        if args.zipped:
+        if not args.unzipped:
             builder.zipup()
     except:
         arg_parser.print_help()

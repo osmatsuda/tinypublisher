@@ -1,7 +1,8 @@
-idea/
-examples/
-build/
-*.egg-info/
+__pycache__
+idea
+examples
+build
+*.egg-info
 *.png
 *.jpg
 *.gif

@@ -23,13 +23,14 @@ class SpineItem:
     content_caption: str
     content_lang: Optional[str] = None
     content_size: Optional[tuple[int, int]] = None
-    content_includes: Optional[list[str]] = None
+    content_includes: Optional[list[tuple[str,str]]] = None
 
 
 @dataclass
 class PackageSpec:
     curdir: Path
     spine: list[SpineItem] = field(default_factory=list)
+    # if not book_title then build/<dest-name> is used
     book_title: str = ''
     _cover_image: Optional[Path] = None
     _language_tag: Optional[str] = None
@@ -53,7 +54,9 @@ class PackageSpec:
         self._cover_image = path
 
     @property
-    def language_tag(self) -> Optional[str]:
+    def language_tag(self) -> str:
+        if self._language_tag is None:
+            return "und"
         return self._language_tag
     @language_tag.setter
     def language_tag(self, tag: Optional[str]):

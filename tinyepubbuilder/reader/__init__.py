@@ -129,8 +129,8 @@ def _check_content_document(path: Path, mime: str) -> _Spine:
     elif mime.endswith('svg+xml'):
         links = _find_linked_in_svg(root)
 
-    links = _validated_links(links, path)
-    spine = _Spine({'content_includes': links}) if links else {}
+    validated_links = _validated_links(links, path)
+    spine = _Spine({'content_includes': validated_links}) if validated_links else {}
     if title is not None and title.text:
         spine['content_title'] = title.text.strip()
 
@@ -141,7 +141,7 @@ def _check_content_document(path: Path, mime: str) -> _Spine:
     return spine
 
 
-def _validated_links(uris: list[str], current: Path) -> list[str]:
+def _validated_links(uris: list[str], current: Path) -> list[tuple[str,str]]:
     re_invalid = re.compile(f'^(?:https?|mailto|urn):|({current.name})?#')
     re_foreign = re.compile('^https?:')
     links = set()
@@ -149,24 +149,24 @@ def _validated_links(uris: list[str], current: Path) -> list[str]:
     for uri in uris:
         if re_invalid.search(uri):
             if re_foreign.search(uri):
-                logger.warn(f'''"{current}" contains a foreign resource
-  -- {uri}
-  {app.__appname__} doesn't treat this''')
+                logger.warning(f'''"{current}" contains a foreign resource
+  -- {uri},
+  {app.__appname__} doesn't treat this.''')
             continue
         
         path = current.parent.joinpath(uri).resolve()
         if not path.is_file():
-            logger.warn(f'''"{current}" references to a nonexistant local file
-  -- {uri}''')
+            logger.warning(f'''"{current}" references to a nonexistant local file
+  -- {uri}.''')
             continue
 
-        links.add(str(path.absolute()))
-        additionals: list[str] = []
         mime = magic.from_file(str(path), mime=True)
-
         if mime in {'text/xml', 'text/plain'}:
             mime, _ = mimetypes.guess_type(path)
 
+        links.add((str(path.absolute()), mime))
+
+        additionals: list[tuple[str,str]] = []
         if mime in CONTENT_DOCUMENT_MEDIA_TYPES:
             spine = _check_content_document(path, mime)
             if spine.__contains__('content_includes'):
@@ -179,8 +179,8 @@ def _validated_links(uris: list[str], current: Path) -> list[str]:
 
     return list(links)
 
-def _find_linked_in_css(path: Path) -> list[str]:
-    re_url = re.compile('url\("?([^\("]+)"?\)')
+def _find_linked_in_css(path: Path) -> list[tuple[str,str]]:
+    re_url = re.compile('url\([\'"]?([^\("\']+)[\'"]?\)')
     links = set()
     with open(path) as f:
         for line in f:
@@ -221,3 +221,4 @@ def _find_linked_in_svg(root: ET.Element) -> list[str]:
             paths.append(ref)
     return paths
 
+    

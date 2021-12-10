@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf"
+	 version="3.0"
+	 unique-identifier="uuid">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="uuid">${id}</dc:identifier>
+    <dc:title>${book_title}</dc:title>
+    <dc:language>${language_tag}</dc:language>
+    <meta property="dcterms:modified">${modified_date}</meta>
+  </metadata>
+  <manifest>
+    <item href="navigation.xhtml" id="navigation" media-type="application/xhtml+xml" properties="nav"/>
+% for item in pkg_items:
+    <item href="${item.href}" id="${item.id}" media-type="${item.media_type}"/>
+% endfor
+  </manifest>
+  <spine>
+% for item in pkg_items:
+  % if item.spine_item:
+    <itemref idref="${item.id}"/>
+  % endif
+% endfor
+  </spine>
+</package>

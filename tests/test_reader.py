@@ -30,11 +30,14 @@ class TestFileListParser(unittest.TestCase):
         self.assertEqual(spine[4].content_caption, 'Goodbye<br/>Sayoonara')
 
         path_to_assets = self.parser.curdir.resolve()
-        _02_includes = [str(path_to_assets / name) for name in ['style.css', 'mark3.svg', 'star2.gif']]
-        self.assertEqual(set(spine[1].content_includes), set(_02_includes))
+        _02_includes = [str(path_to_assets / name)
+                        for name in ['02.js', 'style.css', 'mark3.svg', 'star2.gif']]
+        self.assertEqual(set([p for p, _ in spine[1].content_includes]),
+                         set(_02_includes))
         self.assertTrue(spine[2].content_includes is None or
                         len(spine[2].content_includes) == 0)
-        self.assertEqual(set(spine[3].content_includes), {str(path_to_assets / 'star1.gif')})
+        self.assertEqual(spine[3].content_includes[0][0],
+                         str(path_to_assets / 'star1.gif'))
 
     def test_package(self):
         with self.assertRaises(p.PackageError):

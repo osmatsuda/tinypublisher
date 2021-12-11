@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 from pathlib import Path
 from mako.template import Template # type: ignore
-from typing import Union, Any, Generator
+from typing import Union, Any, Generator, Optional
 import datetime
 
 import tinyepubbuilder as app
-from tinyepubbuilder.package import PackageSpec, SpineItem
+from tinyepubbuilder.package import PackageSpec, SpineItem, MediaType
 
 import logging
-logger = logging.getLogger(f'{app.__appname__}.reader')
+logger = logging.getLogger(f'{app.__appname__}.builder')
 
 
 class BuildingError(Exception):
@@ -27,6 +27,7 @@ class PackageBuilder():
         self.make_package_dirs(spec.curdir)
         self.make_package_document(spec)
         self.make_navigation_xhtml(spec)
+        self.package_content_items(spec)
 
     def make_package_dirs(self, curdir: Path) -> None: # failable
         self.curdir = curdir
@@ -50,18 +51,23 @@ class PackageBuilder():
     def make_package_document(self, spec: PackageSpec) -> None:
         pkg_doc_spec: dict[str, Any] = _make_pkg_doc_spec(spec, self.destdir.name)
         pkg_doc_spec['pkg_items'] = _make_pkg_doc_items(spec.spine, self.curdir.resolve())
+        self.package_document_spec = pkg_doc_spec
+        
         template = _template(self.package_doc.name)
-
         with open(self.package_doc, 'w') as f:
+            logger.info(f'making a Package Document\n  -- {str(self.package_doc)}')
             f.write(template.render(**pkg_doc_spec))
 
     def make_navigation_xhtml(self, spec: PackageSpec) -> None:
         pass
 
+    def package_content_items(self, spec: PackageSpec) -> None:
+        pass
+    
     def zipup(self) -> None:
         pass
 
-
+    
 # Package document
 
 @dataclass(frozen=True)
@@ -69,13 +75,14 @@ class _ManifestItem:
     id: str
     href: str
     media_type: str
+    title: Optional[str] = None
     spine_item: bool = False
     def __hash__(self):
         return hash(self.href)
     def __eq__(self, other):
         return self.href == other.href
 
-def _make_pkg_doc_spec(spec: PackageSpec, pkg_name: str) -> dict[str,str]:#Union[str, list[_ManifestItem]]]:
+def _make_pkg_doc_spec(spec: PackageSpec, pkg_name: str) -> dict[str,str]:
     d = dict()
     d['id'] = spec.id
 
@@ -106,24 +113,44 @@ def _make_pkg_doc_items(spine: list[SpineItem], curdir: Path) -> list[_ManifestI
     items = set()
     for spine_item in spine:
         doc_path = Path(spine_item.content_document)
-        item = _ManifestItem(
-            id = f'item{next(c)}',
-            href = str(doc_path.relative_to(curdir)),
-            media_type = spine_item.media_type,
-            spine_item = True,
-        )
-        items.add(item)
+        href = str(doc_path.relative_to(curdir))
+        if (spine_item.media_type == MediaType.XHTML.value or
+            (spine_item.media_type == MediaType.SVG.value and not spine_item.content_caption)):
+            items.add(_ManifestItem(
+                id = f'item{next(c)}',
+                href = 'items/' + href,
+                title = spine_item.index_title,
+                media_type = spine_item.media_type,
+                spine_item = True,
+            ))
+        else:
+            item = _ManifestItem(
+                id = f'item{next(c)}',
+                href = 'items/' + href,
+                media_type = spine_item.media_type,
+            )
+            items.add(item)
+            items.add(_wrapped_xhtml(item, f'item{next(c)}'))
+
+    for spine_item in spine:
         if not spine_item.content_includes:
             continue
         for uri, mime in spine_item.content_includes:
-            item = _ManifestItem(
+            items.add(_ManifestItem(
                 id = f'item{next(c)}',
-                href = str(Path(uri).relative_to(curdir)),
+                href = 'items/' + str(Path(uri).relative_to(curdir)),
                 media_type = mime,
-            )
-            items.add(item)
+            ))
     c.close()
-    return list(items)
+    return sorted(items, key=lambda itm: int(itm.id[4:]))
+
+def _wrapped_xhtml(item: _ManifestItem, id: str) -> _ManifestItem:
+    return _ManifestItem(
+        id = id,
+        href = item.href + '.xhtml',
+        media_type = MediaType.XHTML.value,
+        spine_item = True,
+    )
 
 
 # Package directory utils

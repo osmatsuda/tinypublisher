@@ -6,7 +6,7 @@ from typing import Optional, Any
 import magic
 
 import tinyepubbuilder as app
-from tinyepubbuilder.package import PackageSpec, SUPPORTED_CONTENT_MEDIA_TYPES
+from tinyepubbuilder.package import PackageSpec, MediaType
 
 import logging
 logger = logging.getLogger(f'{app.__appname__}.reader')
@@ -22,7 +22,8 @@ class _State:
     def succ_col(self):
         self.col += 1
 
-_Spine = dict[str, Any]
+_SpineItem = dict[str, Any]
+
 
 class FileListParser:
     def __init__(self, curdir='.'):
@@ -34,38 +35,39 @@ class FileListParser:
         s = _State(0, 0)
         for entry in lines:
             if entry:
-                spine = self.parseEntry(entry, s)
-                spec.append_spine_item(**spine)
+                spine_item = self.parseEntry(entry, s)
+                spec.append_spine_item(**spine_item)
                 s.succ_row()
         return spec
     
     def parse_text(self, text: str) -> PackageSpec:
         return self.parse(io.StringIO(text))
 
-    def parseEntry(self, entry: list[str], state: _State) -> _Spine:
-        spine: _Spine = {}
+    def parseEntry(self, entry: list[str], state: _State) -> _SpineItem:
+        spine_item: _SpineItem = {}
 
         path = (self.curdir / entry[state.col]).resolve()
-        spine['content_document'] = str(path)
-        spine |= _check_file_type(path, state)
+        spine_item['content_document'] = str(path)
+        spine_item |= _check_file_type(path, state)
 
         state.succ_col()
         index_title = entry[state.col] if len(entry) > state.col else '-'
         if index_title == '-' or index_title == '':
-            if spine.__contains__('content_title'):
-                index_title = spine['content_title']
+            if spine_item.__contains__('content_title'):
+                index_title = spine_item['content_title']
             else:
                 index_title = path.stem
-        spine['index_title'] = index_title
+        spine_item['index_title'] = index_title
 
         state.succ_col()
         content_caption = entry[state.col] if len(entry) > state.col else ''
-        if content_caption == '-' and spine.__contains__('content_title'):
-            content_caption = spine['content_title']
-        spine['content_caption'] = content_caption
+        if content_caption == '-' and spine_item.__contains__('content_title'):
+            content_caption = spine_item['content_title']
+        spine_item['content_caption'] = content_caption
 
-        return spine
+        return spine_item
 
+    
 
 class BaseError(Exception):
     def __init__(self, message: str, state: str):
@@ -76,9 +78,8 @@ class ReaderError(BaseError):
         super().__init__(message, f'pos: {state.row},{state.col}')
 
         
-CONTENT_DOCUMENT_MEDIA_TYPES = set(['image/svg+xml', 'application/xhtml+xml'])
         
-def _check_file_type(path: Path, state: _State) -> _Spine:
+def _check_file_type(path: Path, state: _State) -> _SpineItem:
     if not path.is_file():
         raise ReaderError(f'"{path}" is nonexist or not a regular file.', state)
 
@@ -86,37 +87,38 @@ def _check_file_type(path: Path, state: _State) -> _Spine:
     if mime == 'text/xml':
         mime, _ = mimetypes.guess_type(path)
         
-    if mime not in SUPPORTED_CONTENT_MEDIA_TYPES:
+    if not MediaType.contain(mime):
         raise ReaderError(f'The file type of "{path}" is not supported.', state)
 
-    spine = _Spine({'media_type': mime}) 
+    spine_item = _SpineItem({'media_type': mime}) 
 
-    if mime in CONTENT_DOCUMENT_MEDIA_TYPES:
-        spine |= _check_content_document(path, mime)
+    if MediaType.predict_content_document(mime):
+        spine_item |= _check_content_document(path, mime)
 
     if mime.startswith('image/'):
-        spine |= _image_size(magic.from_file(str(path)))
+        spine_item |= _image_size(magic.from_file(str(path)))
 
-    return spine
+    return spine_item
 
-def _image_size(spec: Optional[str]) -> _Spine:
-    spine: _Spine = {}
+def _image_size(spec: Optional[str]) -> _SpineItem:
+    spine_item: _SpineItem = {}
     if not spec:
-        return spine
+        return spine_item
 
     r = re.compile('\s*(\d+)\s*x\s*(\d+)\s*')
     for c in spec.split(','):
         m = r.match(c)
         if m:
-            spine['content_size'] = (int(m.group(1)), int(m.group(2)))
-    return spine
+            spine_item['content_size'] = (int(m.group(1)), int(m.group(2)))
+    return spine_item
         
+
 
 class ContentDocumentError(Exception):
     def __init__(self, message: str, state):
         super().__init__(message, f'line: {state.row}')
 
-def _check_content_document(path: Path, mime: str) -> _Spine:
+def _check_content_document(path: Path, mime: str) -> _SpineItem:
     logger.info(f'checking "{path.name}"')
 
     tree = ET.parse(path)
@@ -130,15 +132,16 @@ def _check_content_document(path: Path, mime: str) -> _Spine:
         links = _find_linked_in_svg(root)
 
     validated_links = _validated_links(links, path)
-    spine = _Spine({'content_includes': validated_links}) if validated_links else {}
+    spine_item = _SpineItem({'content_includes': validated_links}) if validated_links else {}
     if title is not None and title.text:
-        spine['content_title'] = title.text.strip()
+        spine_item['content_title'] = title.text.strip()
 
     for key in root.attrib:
         if key.endswith('lang'):
-            spine['content_lang'] = root.get(key)
+            spine_item['content_lang'] = root.get(key)
             break
-    return spine
+    return spine_item
+
 
 
 def _validated_links(uris: list[str], current: Path) -> list[tuple[str,str]]:
@@ -167,7 +170,7 @@ def _validated_links(uris: list[str], current: Path) -> list[tuple[str,str]]:
         links.add((str(path.absolute()), mime))
 
         additionals: list[tuple[str,str]] = []
-        if mime in CONTENT_DOCUMENT_MEDIA_TYPES:
+        if MediaType.predict_content_document(mime):
             spine = _check_content_document(path, mime)
             if spine.__contains__('content_includes'):
                 additionals = spine['content_includes']

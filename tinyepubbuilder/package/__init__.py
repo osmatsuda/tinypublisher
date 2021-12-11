@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from enum import Enum
 from argparse import Namespace
 from pathlib import Path
 from uuid import uuid4, uuid5, NAMESPACE_DNS
@@ -6,14 +7,25 @@ from typing import Optional
 import os
 
 
-SUPPORTED_CONTENT_MEDIA_TYPES = {
-    'image/gif',
-    'image/jpeg',
-    'image/png',
-    'image/svg+xml',
-    'application/xhtml+xml',
-}
+class MediaType(Enum):
+    GIF = 'image/gif'
+    JPG = 'image/jpeg'
+    PNG = 'image/png'
+    SVG = 'image/svg+xml'
+    XHTML = 'application/xhtml+xml'
 
+    @classmethod
+    def contain(cls, target: str) -> bool:
+        for entry in cls:
+            if target == entry.value:
+                return True
+        return False
+
+    @classmethod
+    def predict_content_document(cls, target: str) -> bool:
+        return target == cls.SVG.value or target == cls.XHTML.value
+
+    
 
 @dataclass
 class SpineItem:
@@ -26,6 +38,7 @@ class SpineItem:
     content_includes: Optional[list[tuple[str,str]]] = None
 
 
+    
 @dataclass
 class PackageSpec:
     curdir: Path
@@ -96,6 +109,7 @@ class PackageSpec:
                 if finded:
                     return finded
         return None
+
     
 class PackageError(Exception):
     def __init__(self, message):

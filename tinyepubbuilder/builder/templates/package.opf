@@ -16,9 +16,9 @@
   </manifest>
   <spine>
 % for item in pkg_items:
-  % if item.spine_item:
+    % if item.spine_item:
     <itemref idref="${item.id}"/>
-  % endif
+    % endif
 % endfor
   </spine>
 </package>

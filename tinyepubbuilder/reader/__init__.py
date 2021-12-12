@@ -2,7 +2,7 @@ import io, csv, mimetypes, re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Any, Iterable
 import magic
 
 import tinyepubbuilder as app
@@ -56,7 +56,7 @@ class FileListParser:
             if spine_item.__contains__('content_title'):
                 index_title = spine_item['content_title']
             else:
-                index_title = path.stem
+                index_title = path.name
         spine_item['index_title'] = index_title
 
         state.succ_col()
@@ -135,6 +135,10 @@ def _check_content_document(path: Path, mime: str) -> _SpineItem:
     spine_item = _SpineItem({'content_includes': validated_links}) if validated_links else {}
     if title is not None and title.text:
         spine_item['content_title'] = title.text.strip()
+    else:
+        content_text = _content_document_text(root)
+        if content_text:
+            spine_item['content_title'] = content_text
 
     for key in root.attrib:
         if key.endswith('lang'):
@@ -142,6 +146,25 @@ def _check_content_document(path: Path, mime: str) -> _SpineItem:
             break
     return spine_item
 
+def _content_document_text(root: ET.Element) -> str:
+    if root.tag.endswith('svg'):
+        txt_or_tspn = lambda e: e.tag.endswith('text') or e.tag.endswith('tspan')
+        return _content_text(filter(txt_or_tspn, root.findall('.//*')))
+    elif root.tag.endswith('html'):
+        return _content_text(root.findall('.//{*}body//*'))
+    return ''
+
+def _content_text(elements: Iterable) -> str:
+    text = ''
+    for elm in elements:
+        if elm.text:
+            words = ' '.join(elm.text.split())
+            if words:
+                text += ' ' + words
+    text = text.strip()
+    if len(text) > 20:
+        return text[:20] + '…'
+    return text
 
 
 def _validated_links(uris: list[str], current: Path) -> list[tuple[str,str]]:

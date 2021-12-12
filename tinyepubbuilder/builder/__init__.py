@@ -26,7 +26,7 @@ class PackageBuilder():
     def build_with(self, spec: PackageSpec) -> None: # failable
         self.make_package_dirs(spec.curdir)
         self.make_package_document(spec)
-        self.make_navigation_xhtml(spec)
+        self.make_navigation_document(spec)
         self.package_content_items(spec)
 
     def make_package_dirs(self, curdir: Path) -> None: # failable
@@ -37,7 +37,6 @@ class PackageBuilder():
         (destdir / 'META-INF').mkdir(exist_ok=True)
         (destdir / 'book/items').mkdir(parents=True, exist_ok=True)
         self.destdir = destdir
-        self.package_doc = destdir / 'book/package.opf'
 
         mimetype = destdir / 'mimetype'
         mimetype.touch()
@@ -45,21 +44,32 @@ class PackageBuilder():
             f.write('application/epub+zip')
 
         container_file = destdir / 'META-INF/container.xml'
+        pkg_opf = destdir / 'book/package.opf'
         container_file.touch()
-        _make_container_file(container_file, self.package_doc)
+        _make_container_file(container_file, pkg_opf)
 
     def make_package_document(self, spec: PackageSpec) -> None:
+        assert self.destdir is not None
+        
         pkg_doc_spec: dict[str, Any] = _make_pkg_doc_spec(spec, self.destdir.name)
         pkg_doc_spec['pkg_items'] = _make_pkg_doc_items(spec.spine, self.curdir.resolve())
         self.package_document_spec = pkg_doc_spec
-        
-        template = _template(self.package_doc.name)
-        with open(self.package_doc, 'w') as f:
-            logger.info(f'making a Package Document\n  -- {str(self.package_doc)}')
+
+        pkg_opf = self.destdir / 'book/package.opf'
+        template = _template(pkg_opf.name)
+        with open(pkg_opf, 'w') as f:
+            logger.info(f'making a Package Document\n  -- {str(pkg_opf)}')
             f.write(template.render(**pkg_doc_spec))
 
-    def make_navigation_xhtml(self, spec: PackageSpec) -> None:
-        pass
+    def make_navigation_document(self, spec: PackageSpec) -> None:
+        if self.__dict__.get('package_document_spec') is None:
+            self.make_package_document(spec)
+
+        nav_xhtml = self.destdir / 'book/navigation.xhtml'
+        template = _template(nav_xhtml.name)
+        with open(nav_xhtml, 'w') as f:
+            logger.info(f'making a Navigation Document\n  -- {str(nav_xhtml)}')
+            f.write(template.render(**self.package_document_spec))
 
     def package_content_items(self, spec: PackageSpec) -> None:
         pass
@@ -127,6 +137,7 @@ def _make_pkg_doc_items(spine: list[SpineItem], curdir: Path) -> list[_ManifestI
             item = _ManifestItem(
                 id = f'item{next(c)}',
                 href = 'items/' + href,
+                title = spine_item.index_title,
                 media_type = spine_item.media_type,
             )
             items.add(item)
@@ -148,6 +159,7 @@ def _wrapped_xhtml(item: _ManifestItem, id: str) -> _ManifestItem:
     return _ManifestItem(
         id = id,
         href = item.href + '.xhtml',
+        title = item.title,
         media_type = MediaType.XHTML.value,
         spine_item = True,
     )

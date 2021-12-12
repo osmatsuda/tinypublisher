@@ -26,7 +26,7 @@ class TestBuilder(unittest.TestCase):
         container_xml = dest / 'META-INF/container.xml'
         self.assertTrue(container_xml.is_file())
 
-        pkg_doc_loc = str(builder.package_doc.relative_to(dest))
+        pkg_doc_loc = str((builder.destdir / 'book/package.opf').relative_to(dest))
         self.assertEqual(pkg_doc_loc, str(self.pkg_doc_path.relative_to(dest)))
         
         container_xml_tree = ET.parse(container_xml)
@@ -36,7 +36,6 @@ class TestBuilder(unittest.TestCase):
     def test_package_document(self):
         self.spec.language_tag = None
         self.spec.uuid = app.__appname__ + '.test'
-
         builder = b.PackageBuilder('test')
         builder.make_package_dirs(self.curdir)
         builder.make_package_document(self.spec)
@@ -45,7 +44,31 @@ class TestBuilder(unittest.TestCase):
 
         pkg_doc_tree = ET.parse(self.pkg_doc_path)
         self.assertEqual(len(pkg_doc_tree.findall('.//{*}manifest/{*}item')) - 1,
-                         len(list(self.curdir.iterdir())) - 2)
+                         len(list(self.curdir.iterdir())) - 2 + 3)
+
+        xhtmls = []
+        for item in pkg_doc_tree.findall('.//{*}manifest/{*}item'):
+            href = item.get('href')
+            if not href.endswith('.xhtml'):
+                continue
+            xhtmls.append(href)
+        self.assertEqual(xhtmls, ['navigation.xhtml', 'items/01.png.xhtml', 'items/02.xhtml',
+                                  'items/04.svg.xhtml', 'items/05.jpg.xhtml'])
+
+    def test_navigation(self):
+        self.spec.language_tag = None
+        self.spec.uuid = app.__appname__ + '.test'
+        builder = b.PackageBuilder('test')
+        builder.make_package_dirs(self.curdir)
+        builder.make_navigation_document(self.spec)
+
+        titles = ['The first page', 'tinyepubbuilder sample file: 02', '03.svg',
+                  '04.svg', 'The last page']
+        nav_doc = builder.destdir / 'book/navigation.xhtml'
+        nav_tree = ET.parse(nav_doc)
+        self.assertEqual([a.text for a in nav_tree.findall('.//{*}li/{*}a')],
+                         titles)
+
 
 if __name__ == '__main__':
     unittest.main()

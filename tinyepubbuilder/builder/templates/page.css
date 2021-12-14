@@ -1,0 +1,23 @@
+body, figure {
+    margin: 0;
+    padding: 0;
+}
+figure {
+    display: flex;
+    flex-flow: column nowrap;
+    height: 100vh;
+    justify-content: center;
+}
+figure img, figure figcaption {
+    display: flex-item;
+    margin: 0 auto;
+}
+figure img {
+    max-height: calc(100% - 3em);
+    max-width: 100%;
+    page-break-inside: avoid;
+}
+figure figcaption {
+    padding: .2em .5em;
+    line-height: 1.1;
+}

@@ -74,7 +74,8 @@ class TestBuilder(unittest.TestCase):
 
         items_dir = self.builder.destdir / 'book/items'
         self.assertEqual(len(list(items_dir.iterdir())),
-                         len(list(self.curdir.iterdir())) - 2 + 3)
+                         len(list(self.curdir.iterdir())) - 2 + 3 + 1)
+        # 3: wrapping xhtmls, 1: css for wrapping xhtml
 
 if __name__ == '__main__':
     unittest.main()

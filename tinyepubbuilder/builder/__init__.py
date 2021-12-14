@@ -95,6 +95,7 @@ class _WrappingDocSpec:
     index_title: str
     caption: str
     content_src: str
+    css_href: str = ''
 
 def _src_loc(uri: str, curdir: Path) -> str:
     return str(Path(uri).relative_to(curdir))
@@ -112,12 +113,40 @@ def _wrapping_doc_spec(item_href: str, spec: PackageSpec) -> _WrappingDocSpec:
         content_src = loc
     )
 
+_CSS_HREF = None
+def _css_href(spine: list[SpineItem]) -> str:
+    global _CSS_HREF
+    if _CSS_HREF is None:
+        c = counter()
+        stop = False
+        while not stop:
+            href = f'{app.__appname__}G{next(c)}'
+            stop = True
+            for item in spine:
+                if not item.content_includes:
+                    continue
+                for uri, _ in item.content_includes:
+                    if Path(uri).name == href + '.css':
+                        stop = False
+                        break
+                if not stop:
+                    break
+        _CSS_HREF = href + '.css'
+        c.close()
+    return _CSS_HREF
+
 def _make_wrapping_doc(spec: PackageSpec, item: _ManifestItem, target: Path) -> None:
     item_spec = asdict(_wrapping_doc_spec(item.href, spec))
+    css_name = _css_href(spec.spine)
+    item_spec['css_href'] = css_name
+    
     template = _template('page.xhtml')
     with open(target, 'w') as f:
         logger.info(f'making a page\n  -- {str(target)}')
         f.write(template.render(**item_spec))
+
+    css_template = Path(__file__).parent / 'templates/page.css'
+    (target.parent / css_name).write_text(css_template.read_text())
     
 def _copy_item(src_item: _ManifestItem, target: Path) -> None:
     src = src_item.src_path

@@ -15,18 +15,24 @@ class TestBuilder(unittest.TestCase):
         specfile = self.parser.curdir / 'spine.tsv'
         with open(specfile) as f:
             self.spec = self.parser.parse(f)
-            
+
+        self.builder = b.PackageBuilder('test')
         self.pkg_doc_path = self.curdir / 'build/test/book/package.opf'
+
+    def make_pkg(self):
+        self.spec.language_tag = None
+        self.spec.uuid = app.__appname__ + '.test'
+        self.builder.make_package_dirs(self.curdir)
+        self.builder.make_package_document(self.spec)
         
     def test_init(self):
-        builder = b.PackageBuilder('test')
-        builder.make_package_dirs(self.curdir)
+        self.builder.make_package_dirs(self.curdir)
 
         dest = self.curdir / 'build/test'
         container_xml = dest / 'META-INF/container.xml'
         self.assertTrue(container_xml.is_file())
 
-        pkg_doc_loc = str((builder.destdir / 'book/package.opf').relative_to(dest))
+        pkg_doc_loc = str((self.builder.destdir / 'book/package.opf').relative_to(dest))
         self.assertEqual(pkg_doc_loc, str(self.pkg_doc_path.relative_to(dest)))
         
         container_xml_tree = ET.parse(container_xml)
@@ -34,11 +40,7 @@ class TestBuilder(unittest.TestCase):
         self.assertEqual(container_xml_root.find('.//{*}rootfile').get('full-path'), pkg_doc_loc)
 
     def test_package_document(self):
-        self.spec.language_tag = None
-        self.spec.uuid = app.__appname__ + '.test'
-        builder = b.PackageBuilder('test')
-        builder.make_package_dirs(self.curdir)
-        builder.make_package_document(self.spec)
+        self.make_pkg()
 
         self.assertTrue(self.pkg_doc_path.is_file())
 
@@ -56,19 +58,23 @@ class TestBuilder(unittest.TestCase):
                                   'items/04.svg.xhtml', 'items/05.jpg.xhtml'])
 
     def test_navigation(self):
-        self.spec.language_tag = None
-        self.spec.uuid = app.__appname__ + '.test'
-        builder = b.PackageBuilder('test')
-        builder.make_package_dirs(self.curdir)
-        builder.make_navigation_document(self.spec)
+        self.make_pkg()
+        self.builder.make_navigation_document(self.spec)
 
         titles = ['The first page', 'tinyepubbuilder sample file: 02', '03.svg',
                   '04.svg', 'The last page']
-        nav_doc = builder.destdir / 'book/navigation.xhtml'
+        nav_doc = self.builder.destdir / 'book/navigation.xhtml'
         nav_tree = ET.parse(nav_doc)
         self.assertEqual([a.text for a in nav_tree.findall('.//{*}li/{*}a')],
                          titles)
 
+    def test_package(self):
+        self.make_pkg()
+        self.builder.package_content_items(self.spec)
+
+        items_dir = self.builder.destdir / 'book/items'
+        self.assertEqual(len(list(items_dir.iterdir())),
+                         len(list(self.curdir.iterdir())) - 2 + 3)
 
 if __name__ == '__main__':
     unittest.main()

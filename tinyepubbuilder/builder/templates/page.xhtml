@@ -6,17 +6,14 @@
   xml:lang="${language_tag}">
   <head>
     <meta charset="utf-8"/>
-    <title>Navigation</title>
+    <title>${index_title}</title>
   </head>
   <body>
-    <nav epub:type="toc" id="toc">
-      <ol>
-% for item in pkg_items:
-        % if item.spine_item_p:
-	<li><a href="${item.href}">${item.title}</a></li>
-	% endif
-% endfor
-      </ol>
-    </nav>
+    <figure>
+      <img src="${content_src}"/>
+      % if caption:
+      <figcaption>${caption}</figcaption>
+      % endif
+    </figure>
   </body>
 </html>

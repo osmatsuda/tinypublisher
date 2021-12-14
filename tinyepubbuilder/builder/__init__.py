@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from __future__ import annotations
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from mako.template import Template # type: ignore
 from typing import Union, Any, Generator, Optional
@@ -72,12 +73,65 @@ class PackageBuilder():
             f.write(template.render(**self.package_document_spec))
 
     def package_content_items(self, spec: PackageSpec) -> None:
-        pass
+        if self.__dict__.get('package_document_spec') is None:
+            self.make_package_document(spec)
+
+        for item in self.package_document_spec['pkg_items']:
+            target = self.destdir / 'book' / item.href
+            if item.spine_item_p and item.src_path is None:
+                _make_wrapping_doc(spec, item, target)
+            else:
+                _copy_item(item, target)
     
     def zipup(self) -> None:
         pass
 
+
+# Packaging documents
+
+@dataclass
+class _WrappingDocSpec:
+    language_tag: str
+    index_title: str
+    caption: str
+    content_src: str
+
+def _src_loc(uri: str, curdir: Path) -> str:
+    return str(Path(uri).relative_to(curdir))
+
+def _wrapping_doc_spec(item_href: str, spec: PackageSpec) -> _WrappingDocSpec:
+    loc = item_href[len('items/'):]
+    loc = loc[:-len('.xhtml')]
+    for spine_item in spec.spine:
+        if _src_loc(spine_item.content_document, spec.curdir) == loc:
+            break
+    return _WrappingDocSpec(
+        language_tag = spec.language_tag,
+        index_title = spine_item.index_title,
+        caption = spine_item.content_caption,
+        content_src = loc
+    )
+
+def _make_wrapping_doc(spec: PackageSpec, item: _ManifestItem, target: Path) -> None:
+    item_spec = asdict(_wrapping_doc_spec(item.href, spec))
+    template = _template('page.xhtml')
+    with open(target, 'w') as f:
+        logger.info(f'making a page\n  -- {str(target)}')
+        f.write(template.render(**item_spec))
     
+def _copy_item(src_item: _ManifestItem, target: Path) -> None:
+    src = src_item.src_path
+    if src is None: return
+    
+    if MediaType.predict_text(src_item.media_type):
+        target.write_text(src.read_text())
+    else:
+        target.write_bytes(src.read_bytes())
+        
+    src_loc = src_item.href[len('items/'):]
+    logger.info(f'copied {src_loc} to\n  -- {str(target)}')
+
+
 # Package document
 
 @dataclass(frozen=True)
@@ -85,8 +139,9 @@ class _ManifestItem:
     id: str
     href: str
     media_type: str
+    src_path: Optional[Path] = None
     title: Optional[str] = None
-    spine_item: bool = False
+    spine_item_p: bool = False
     def __hash__(self):
         return hash(self.href)
     def __eq__(self, other):
@@ -131,7 +186,8 @@ def _make_pkg_doc_items(spine: list[SpineItem], curdir: Path) -> list[_ManifestI
                 href = 'items/' + href,
                 title = spine_item.index_title,
                 media_type = spine_item.media_type,
-                spine_item = True,
+                spine_item_p = True,
+                src_path = Path(spine_item.content_document),
             ))
         else:
             item = _ManifestItem(
@@ -139,9 +195,10 @@ def _make_pkg_doc_items(spine: list[SpineItem], curdir: Path) -> list[_ManifestI
                 href = 'items/' + href,
                 title = spine_item.index_title,
                 media_type = spine_item.media_type,
+                src_path = Path(spine_item.content_document),
             )
             items.add(item)
-            items.add(_wrapped_xhtml(item, f'item{next(c)}'))
+            items.add(_wrapping_doc(item, f'item{next(c)}'))
 
     for spine_item in spine:
         if not spine_item.content_includes:
@@ -151,17 +208,18 @@ def _make_pkg_doc_items(spine: list[SpineItem], curdir: Path) -> list[_ManifestI
                 id = f'item{next(c)}',
                 href = 'items/' + str(Path(uri).relative_to(curdir)),
                 media_type = mime,
+                src_path = Path(uri),
             ))
     c.close()
     return sorted(items, key=lambda itm: int(itm.id[4:]))
 
-def _wrapped_xhtml(item: _ManifestItem, id: str) -> _ManifestItem:
+def _wrapping_doc(item: _ManifestItem, id: str) -> _ManifestItem:
     return _ManifestItem(
         id = id,
         href = item.href + '.xhtml',
         title = item.title,
         media_type = MediaType.XHTML.value,
-        spine_item = True,
+        spine_item_p = True,
     )
 
 

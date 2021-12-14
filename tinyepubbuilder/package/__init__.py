@@ -13,6 +13,8 @@ class MediaType(Enum):
     PNG = 'image/png'
     SVG = 'image/svg+xml'
     XHTML = 'application/xhtml+xml'
+    CSS = 'text/css'
+    JS = 'application/javascript'
 
     @classmethod
     def contain(cls, target: str) -> bool:
@@ -25,7 +27,17 @@ class MediaType(Enum):
     def predict_content_document(cls, target: str) -> bool:
         return target == cls.SVG.value or target == cls.XHTML.value
 
-    
+    @classmethod
+    def predict_text(cls, target: str) -> bool:
+        return target in _TEXTTYPE
+
+_TEXTTYPE = {
+    MediaType.SVG.value,
+    MediaType.XHTML.value,
+    MediaType.CSS.value,
+    MediaType.JS.value,
+}
+
 
 @dataclass
 class SpineItem:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, asdict
 from pathlib import Path
+from zipfile import ZipFile, ZIP_DEFLATED
 from mako.template import Template # type: ignore
 from typing import Union, Any, Generator, Optional
 import datetime
@@ -84,7 +85,20 @@ class PackageBuilder():
                 _copy_item(item, target)
     
     def zipup(self) -> None:
-        pass
+        zt = self.destdir.parent / (self.packagename + '.epub')
+        with ZipFile(zt, 'w') as zf:
+            _zipwrite(zf, self.destdir, *self.destdir.iterdir())
+
+
+# zipup
+
+def _zipwrite(zf: ZipFile, base: Path, *paths: Path) -> None:
+    for p in paths:
+        if p.is_file():
+            zf.write(p, str(p.relative_to(base)), ZIP_DEFLATED)
+        elif p.is_dir():
+            zf.write(p, str(p.relative_to(base)))
+            _zipwrite(zf, base, *p.iterdir())
 
 
 # Packaging documents

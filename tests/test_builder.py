@@ -1,6 +1,7 @@
 import unittest
 import pathlib
 import xml.etree.ElementTree as ET
+import zipfile
 
 import tinyepubbuilder as app
 import tinyepubbuilder.builder as b
@@ -76,6 +77,17 @@ class TestBuilder(unittest.TestCase):
         self.assertEqual(len(list(items_dir.iterdir())),
                          len(list(self.curdir.iterdir())) - 2 + 3 + 1)
         # 3: wrapping xhtmls, 1: css for wrapping xhtml
+
+    def test_zip(self):
+        self.make_pkg()
+        self.builder.package_content_items(self.spec)
+        dest = self.builder.destdir.parent / (self.builder.destdir.name + '.epub')
+        if dest.exists():
+            dest.unlink()
+        self.builder.zipup()
+
+        with zipfile.ZipFile(dest) as zf:
+            self.assertIsNone(zf.testzip())
 
 if __name__ == '__main__':
     unittest.main()

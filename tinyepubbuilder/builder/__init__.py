@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
+import xml.etree.ElementTree as ET
 from mako.template import Template # type: ignore
 from typing import Union, Any, Generator, Optional
 import datetime
@@ -110,6 +111,7 @@ class _WrappingDocSpec:
     caption: str
     content_src: str
     css_href: str = ''
+    svg: str = ''
 
 def _src_loc(uri: str, curdir: Path) -> str:
     return str(Path(uri).relative_to(curdir))
@@ -124,7 +126,8 @@ def _wrapping_doc_spec(item_href: str, spec: PackageSpec) -> _WrappingDocSpec:
         language_tag = spec.language_tag,
         index_title = spine_item.index_title,
         caption = spine_item.content_caption,
-        content_src = loc
+        content_src = loc,
+        svg = spine_item.content_document if spine_item.media_type == MediaType.SVG.value else '',
     )
 
 _CSS_HREF = None
@@ -149,10 +152,19 @@ def _css_href(spine: list[SpineItem]) -> str:
         c.close()
     return _CSS_HREF
 
+def _svg_content(src: str) -> str:
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
+    ET.register_namespace('xlink', 'http://www.w3.org/1999/xlink')
+    svg = ET.parse(src)
+    svg_content = ET.tostring(svg.getroot(), encoding='unicode')
+    return svg_content.replace('\n', '\n      ')
+    
 def _make_wrapping_doc(spec: PackageSpec, item: _ManifestItem, target: Path) -> None:
     item_spec = asdict(_wrapping_doc_spec(item.href, spec))
     css_name = _css_href(spec.spine)
     item_spec['css_href'] = css_name
+    if item_spec['svg']:
+        item_spec['svg'] = _svg_content(item_spec['svg'])
     
     template = _template('page.xhtml')
     with open(target, 'w') as f:
@@ -240,7 +252,8 @@ def _make_pkg_doc_items(spine: list[SpineItem], curdir: Path) -> list[_ManifestI
                 media_type = spine_item.media_type,
                 src_path = Path(spine_item.content_document),
             )
-            items.add(item)
+            if spine_item.media_type != MediaType.SVG.value:
+                items.add(item)
             items.add(_wrapping_doc(item, f'item{next(c)}'))
 
     for spine_item in spine:

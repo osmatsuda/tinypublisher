@@ -11,7 +11,11 @@
   </head>
   <body>
     <figure>
+      % if svg:
+      ${svg}
+      % else:
       <img src="${content_src}"/>
+      % endif
       % if caption:
       <figcaption>${caption}</figcaption>
       % endif

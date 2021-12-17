@@ -57,6 +57,7 @@ class PackageSpec:
     spine: list[SpineItem] = field(default_factory=list)
     # if not book_title then build/<dest-name> is used
     book_title: str = ''
+    author: Optional[str] = None
     _cover_image: Optional[Path] = None
     _language_tag: Optional[str] = None
     _id: Optional[str] = None

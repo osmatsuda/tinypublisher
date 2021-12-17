@@ -23,6 +23,7 @@ class TestBuilder(unittest.TestCase):
     def make_pkg(self):
         self.spec.language_tag = None
         self.spec.uuid = app.__appname__ + '.test'
+        self.spec.author = 'fu'
         self.builder.make_package_dirs(self.curdir)
         self.builder.make_package_document(self.spec)
         
@@ -48,6 +49,7 @@ class TestBuilder(unittest.TestCase):
         pkg_doc_tree = ET.parse(self.pkg_doc_path)
         self.assertEqual(len(pkg_doc_tree.findall('.//{*}manifest/{*}item')) - 1,
                          len(list(self.curdir.iterdir())) - 2 + 3 - 1)
+        self.assertEqual(pkg_doc_tree.find('.//{*}creator').text, 'fu')
 
         xhtmls = []
         for item in pkg_doc_tree.findall('.//{*}manifest/{*}item'):

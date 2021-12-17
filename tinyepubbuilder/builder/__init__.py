@@ -211,6 +211,9 @@ def _make_pkg_doc_spec(spec: PackageSpec, pkg_name: str) -> dict[str,str]:
         title = pkg_name
     d['book_title'] = title
 
+    if spec.author:
+        d['author'] = spec.author
+
     ltag = spec.language_tag
     if ltag == 'und':
         logger.warning(f'''{app.__appname__} failed to specify the language-tag.

@@ -6,6 +6,10 @@
     <dc:identifier id="uuid">${id}</dc:identifier>
     <dc:title>${book_title}</dc:title>
     <dc:language>${language_tag}</dc:language>
+    %if author:
+    <dc:creator id="creator">${author}</dc:creator>
+    <meta refines="#creator" property="role" scheme="marc:relators">aut</meta>
+    %endif
     <meta property="dcterms:modified">${modified_date}</meta>
   </metadata>
   <manifest>

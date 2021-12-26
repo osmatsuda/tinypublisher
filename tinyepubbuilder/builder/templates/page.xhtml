@@ -6,19 +6,22 @@
   xml:lang="${language_tag}">
   <head>
     <meta charset="utf-8"/>
-    <title>${index_title}</title>
-    <link rel="stylesheet" type="text/css" href="${css_href}"/>
+    <title>${title}</title>
+<%!
+import urllib.parse as URL
+%>
+    <link rel="stylesheet" type="text/css" href="${URL.quote(css_href)}"/>
   </head>
   <body>
     <figure>
-      % if svg:
+    % if svg:
       ${svg}
-      % else:
-      <img src="${content_src}"/>
-      % endif
-      % if caption:
+    % else:
+      <img src="${URL.quote(content_src)}"/>
+    % endif
+    % if caption:
       <figcaption>${caption}</figcaption>
-      % endif
+    % endif
     </figure>
   </body>
 </html>

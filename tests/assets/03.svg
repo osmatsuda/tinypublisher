@@ -6,6 +6,6 @@
   <rect x="12" y="12" width="1000" height="1000" fill="none" stroke="black" stroke-width="1"/>
   <path fill="none" stroke="black" stroke-width="1" d="M 6,6 1018,1018 M 6,1018 1018,6"/>
   <text x="24" y="24" dominant-baseline="hanging" font-size="120">
-    03.svg
+    03.svg: This is a content document.
   </text>
 </svg>

@@ -1,7 +1,6 @@
 import unittest
-import pathlib
 import xml.etree.ElementTree as ET
-import zipfile
+import pathlib, zipfile, logging
 
 import tinyepubbuilder as app
 import tinyepubbuilder.builder as b
@@ -9,6 +8,10 @@ import tinyepubbuilder.reader as r
 
 
 class TestBuilder(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        b.logger.setLevel(logging.WARNING)
+
     def setUp(self):
         self.curdir = pathlib.Path(__file__).parent / 'assets'
         self.parser = r.FileListParser(str(self.curdir))
@@ -24,8 +27,10 @@ class TestBuilder(unittest.TestCase):
         self.spec.language_tag = None
         self.spec.uuid = app.__appname__ + '.test'
         self.spec.author = 'fu'
+        self.spec.book_title = 'test of tinyepubbuilder'
+        self.spec.cover_image = 'cover.png'
+
         self.builder.make_package_dirs(self.curdir)
-        self.builder.make_package_document(self.spec)
         
     def test_init(self):
         self.builder.make_package_dirs(self.curdir)
@@ -43,6 +48,7 @@ class TestBuilder(unittest.TestCase):
 
     def test_package_document(self):
         self.make_pkg()
+        self.builder.make_package_document(self.spec)
 
         self.assertTrue(self.pkg_doc_path.is_file())
 
@@ -62,10 +68,10 @@ class TestBuilder(unittest.TestCase):
 
     def test_navigation(self):
         self.make_pkg()
+        self.builder.make_package_document(self.spec)
         self.builder.make_navigation_document(self.spec)
 
-        titles = ['The first page', 'tinyepubbuilder sample file: 02', '03.svg',
-                  '04.svg', 'The last page']
+        titles = ['The first page', '03.svg: This is a co…', 'The last page']
         nav_doc = self.builder.destdir / 'book/navigation.xhtml'
         nav_tree = ET.parse(nav_doc)
         self.assertEqual([a.text for a in nav_tree.findall('.//{*}li/{*}a')],
@@ -73,6 +79,7 @@ class TestBuilder(unittest.TestCase):
 
     def test_package(self):
         self.make_pkg()
+        self.builder.make_package_document(self.spec)
         self.builder.package_content_items(self.spec)
 
         items_dir = self.builder.destdir / 'book/items'
@@ -80,6 +87,18 @@ class TestBuilder(unittest.TestCase):
                          len(list(self.curdir.iterdir())) - 2 + 3 + 1 - 1)
         # 3: wrapping xhtmls, 1: css for wrapping xhtmls, -1: 04.svg is embedded in the xhtml
 
+    def test_command_args(self):
+        self.make_pkg()
+        self.builder.make_package_document(self.spec)
+        self.builder.package_content_items(self.spec)
+
+        pkg_doc_tree = ET.parse(self.pkg_doc_path)
+        self.assertEqual(pkg_doc_tree.find('.//{*}item[@properties="cover-image"]').get('href'),
+                         'items/cover.png')
+        cover_path = self.builder.destdir / 'book/items/cover.png'
+        self.assertTrue(cover_path.is_file())
+
+        
     def test_zip(self):
         self.make_pkg()
         self.builder.package_content_items(self.spec)

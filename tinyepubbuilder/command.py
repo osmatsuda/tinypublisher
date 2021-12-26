@@ -1,28 +1,9 @@
 import sys, argparse
 
-import tinyepubbuilder.reader
-import tinyepubbuilder.builder
+import tinyepubbuilder.reader as reader
+import tinyepubbuilder.builder as builder
 
 
-"""
-tinyepubbuilder front end tool
-
-Usage: tinyepubbuild [--unzipped] <package-name> \\
-       [-c <cover-image>] [-t <title>] [-l <language-tag>] \\
-       [--id <identifier>] [--uuid <dns-name>]
-Description:
-    This is a tool to buid epub from a formatted file-list readable on the
-    standard input.
-
-Options:
-    --unzipped
-    -c, --cover <cover-image>
-    -t, --title <title>
-    -a, --author <author-name>
-    -l, --language <language-tag>
-    --id <identifier>
-    --uuid <dns-name>
-"""
 _FILE_LIST_DESCRIPTION_ = """\
 File-list format:
     <file-list>  ::= <entry>+
@@ -36,31 +17,33 @@ File-list format:
         XHTML file. If you want to embed that SVG into XHTML, you should add a
         <content-caption>.
     <index-title>
-        If it is specified which indicates that document linked from a table of
-        contents.
-        If it is specified to "-", the content document's title or the basename
-        of the file is used as the index title.
+        Indicates that document linked from a table of contents.
+        If it is specified to "-", the title of content document, text contents,
+        or the basename of the file is used as the index title.
     <content-caption>
-        When the <path> points to a SVG and this cell is specified, the SVG is
+        When the <path>'s media type is image type, this value used as a content
+        of figcaption tag of the wrapping XHTML.
+        if the <path> points to a SVG and this cell is specified, the SVG is
         embedded in a XHTML file. Then, if it is "-", this value is the SVG's
         title data or the basename of the file.
 """
 
-def arg_parser():
+def _argparser():
     parser = argparse.ArgumentParser(
         prog='tinyepubbuild',
-        description='This is a tool to buid epub from a formatted file-list readable on the standard input.',
+        description='A tool to buid a epub package from a formatted file-list readable on the standard input.',
+        formatter_class=argparse.RawDescriptionHelpFormatter, 
         epilog=_FILE_LIST_DESCRIPTION_)
     
-    parser.add_argument('--unzipped', action='store_true', help='make a package unzipped')
-    parser.add_argument('packagename', metavar='package-name', help='EPUB Package directory')
+    parser.add_argument('--unzipped', action='store_true', help='make the package unzipped')
+    parser.add_argument('packagename', metavar='package-name', help='EPUB Package directory and make the file <package-name>.epub')
     parser.add_argument('-c', '--cover', metavar='cover-image',
-                        help='path to the cover-image')
+                        help='used for <item properties="cover-image" href="<cover-image>"/>')
     parser.add_argument('-t', '--title', metavar='title',
-                        help='if it is not, <package-name> is used for a title')
+                        help='if not, <package-name> is used for the book title')
     parser.add_argument('-l', '--language', metavar='language-tag',
-                        help='if it is not, use the `lang` attribute of the content documents. if there is no `lang` attribute, use the `os.environ["LANG"]`')
-    parser.add_argument('-a', '--author',
+                        help='if not, use the `lang` attribute of the content documents. if there is no `lang` attribute, use the `os.environ["LANG"]`')
+    parser.add_argument('-a', '--author', metavar='author-name',
                         help='used for <dc:creator> element of the package document')
     parser.add_argument('--id', metavar='identifier',
                         help='used for <dc:identifier> element of the package document')
@@ -68,8 +51,8 @@ def arg_parser():
     return parser
 
 def main():
-    arg_parser = arg_parser()
-    args = arg_parser.parse_args()
+    argparser = _argparser()
+    args = argparser.parse_args()
     try:
         file_list_parser = reader.FileListParser()
         package_spec = file_list_parser.parse(sys.stdin)
@@ -82,13 +65,14 @@ def main():
         package_spec.id = args.id if args.id is not None else None
         package_spec.uuid = args.uuid
 
-        builder = builder.PackageBuilder(args.packagename)
-        builder.build_with(pakage_spec)
+        packager = builder.PackageBuilder(args.packagename)
+        packager.build_with(package_spec)
 
         if not args.unzipped:
-            builder.zipup()
-    except:
-        arg_parser.print_help()
+            packager.zipup()
+    except Exception as e:
+        print(e)
+        argparser.print_help()
     
 if __name__ == '__main__':
     main()

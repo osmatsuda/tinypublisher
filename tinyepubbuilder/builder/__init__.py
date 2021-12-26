@@ -5,7 +5,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 import xml.etree.ElementTree as ET
 from mako.template import Template # type: ignore
 from typing import Union, Any, Generator, Optional
-import datetime
+import datetime, magic, urllib.parse
 
 import tinyepubbuilder as app
 from tinyepubbuilder.package import PackageSpec, SpineItem, MediaType
@@ -56,13 +56,16 @@ class PackageBuilder():
         
         pkg_doc_spec: dict[str, Any] = _make_pkg_doc_spec(spec, self.destdir.name)
         pkg_doc_spec['pkg_items'] = _make_pkg_doc_items(spec.spine, self.curdir.resolve())
+        if spec.cover_image:
+            _pkg_doc_add_cover_image(spec.cover_image, pkg_doc_spec, self.curdir)
         self.package_document_spec = pkg_doc_spec
 
         pkg_opf = self.destdir / 'book/package.opf'
         template = _template(pkg_opf.name)
+
+        logger.info(f'making a Package Document\n  -- {str(pkg_opf)}')
         with open(pkg_opf, 'w') as f:
-            logger.info(f'making a Package Document\n  -- {str(pkg_opf)}')
-            f.write(template.render(**pkg_doc_spec))
+            f.write(template.render(**self.package_document_spec))
 
     def make_navigation_document(self, spec: PackageSpec) -> None:
         if self.__dict__.get('package_document_spec') is None:
@@ -70,8 +73,9 @@ class PackageBuilder():
 
         nav_xhtml = self.destdir / 'book/navigation.xhtml'
         template = _template(nav_xhtml.name)
+
+        logger.info(f'making a Navigation Document\n  -- {str(nav_xhtml)}')
         with open(nav_xhtml, 'w') as f:
-            logger.info(f'making a Navigation Document\n  -- {str(nav_xhtml)}')
             f.write(template.render(**self.package_document_spec))
 
     def package_content_items(self, spec: PackageSpec) -> None:
@@ -87,10 +91,12 @@ class PackageBuilder():
     
     def zipup(self) -> None:
         zt = self.destdir.parent / (self.packagename + '.epub')
+        logger.info(f'making a EPUB package\n  -- {str(zt)}')
         with ZipFile(zt, 'w') as zf:
             _zipwrite(zf, self.destdir, *self.destdir.iterdir())
 
 
+            
 # zipup
 
 def _zipwrite(zf: ZipFile, base: Path, *paths: Path) -> None:
@@ -102,19 +108,24 @@ def _zipwrite(zf: ZipFile, base: Path, *paths: Path) -> None:
             _zipwrite(zf, base, *p.iterdir())
 
 
+            
 # Packaging documents
 
 @dataclass
 class _WrappingDocSpec:
     language_tag: str
-    index_title: str
+    title: str
     caption: str
     content_src: str
     css_href: str = ''
     svg: str = ''
 
 def _src_loc(uri: str, curdir: Path) -> str:
-    return str(Path(uri).relative_to(curdir))
+    base = curdir.resolve()
+    dest = Path(uri)
+    while not dest.is_relative_to(base):
+        base = base.parent
+    return str(dest.relative_to(base))
 
 def _wrapping_doc_spec(item_href: str, spec: PackageSpec) -> _WrappingDocSpec:
     loc = item_href[len('items/'):]
@@ -124,7 +135,7 @@ def _wrapping_doc_spec(item_href: str, spec: PackageSpec) -> _WrappingDocSpec:
             break
     return _WrappingDocSpec(
         language_tag = spec.language_tag,
-        index_title = spine_item.index_title,
+        title = spine_item.index_title if spine_item.index_title else spine_item.content_title,
         caption = spine_item.content_caption,
         content_src = loc,
         svg = spine_item.content_document if spine_item.media_type == MediaType.SVG.value else '',
@@ -167,8 +178,11 @@ def _make_wrapping_doc(spec: PackageSpec, item: _ManifestItem, target: Path) -> 
         item_spec['svg'] = _svg_content(item_spec['svg'])
     
     template = _template('page.xhtml')
+
+    logger.info(f'making a page\n  -- {str(target)}')
+    if not target.parent.is_dir():
+        target.parent.mkdir(parents=True)
     with open(target, 'w') as f:
-        logger.info(f'making a page\n  -- {str(target)}')
         f.write(template.render(**item_spec))
 
     css_template = Path(__file__).parent / 'templates/page.css'
@@ -178,25 +192,28 @@ def _copy_item(src_item: _ManifestItem, target: Path) -> None:
     src = src_item.src_path
     if src is None: return
     
+    logger.info(f'copying {src_item.href[len("items/"):]} to\n  -- {str(target)}')
+    if not target.parent.is_dir():
+        target.parent.mkdir(parents=True)
     if MediaType.predict_text(src_item.media_type):
         target.write_text(src.read_text())
     else:
         target.write_bytes(src.read_bytes())
-        
-    src_loc = src_item.href[len('items/'):]
-    logger.info(f'copied {src_loc} to\n  -- {str(target)}')
 
 
+    
 # Package document
 
-@dataclass(frozen=True)
+@dataclass
 class _ManifestItem:
     id: str
     href: str
     media_type: str
     src_path: Optional[Path] = None
-    title: Optional[str] = None
+    index_title: Optional[str] = None
+    content_title: Optional[str] = None
     spine_item_p: bool = False
+    cover_image_p: bool = False
     def __hash__(self):
         return hash(self.href)
     def __eq__(self, other):
@@ -234,30 +251,53 @@ def counter() -> Generator:
 def _make_pkg_doc_items(spine: list[SpineItem], curdir: Path) -> list[_ManifestItem]:
     c = counter()
     items = set()
+    index_title_count = 0
     for spine_item in spine:
         doc_path = Path(spine_item.content_document)
         href = str(doc_path.relative_to(curdir))
+        
         if (spine_item.media_type == MediaType.XHTML.value or
             (spine_item.media_type == MediaType.SVG.value and not spine_item.content_caption)):
             items.add(_ManifestItem(
                 id = f'item{next(c)}',
                 href = 'items/' + href,
-                title = spine_item.index_title,
+                index_title = spine_item.index_title,
                 media_type = spine_item.media_type,
                 spine_item_p = True,
                 src_path = Path(spine_item.content_document),
             ))
         else:
-            item = _ManifestItem(
+            if spine_item.media_type != MediaType.SVG.value:
+                items.add(_ManifestItem(
+                    id = f'item{next(c)}',
+                    href = 'items/' + href,
+                    media_type = spine_item.media_type,
+                    src_path = Path(spine_item.content_document),
+                ))
+            items.add(_wrapping_doc(_ManifestItem(
                 id = f'item{next(c)}',
                 href = 'items/' + href,
-                title = spine_item.index_title,
+                index_title = spine_item.index_title,
+                content_title = spine_item.content_title,
                 media_type = spine_item.media_type,
                 src_path = Path(spine_item.content_document),
-            )
-            if spine_item.media_type != MediaType.SVG.value:
-                items.add(item)
-            items.add(_wrapping_doc(item, f'item{next(c)}'))
+            ), f'item{next(c)}'))
+        if spine_item.index_title:
+           index_title_count += 1
+
+    if not index_title_count:
+        for item in items:
+            if not item.spine_item_p:
+                continue
+            if item.content_title:
+                item.index_title = item.content_title
+            elif item.src_path:
+                item.index_title = item.src_path.stem
+            else:
+                basename = Path(item.href).stem
+                if basename[basename.rfind('.'):] == '.svg':
+                    basename = basename[:basename.rfind('.')]
+                item.index_title = basename
 
     for spine_item in spine:
         if not spine_item.content_includes:
@@ -276,10 +316,31 @@ def _wrapping_doc(item: _ManifestItem, id: str) -> _ManifestItem:
     return _ManifestItem(
         id = id,
         href = item.href + '.xhtml',
-        title = item.title,
+        index_title = item.index_title,
+        content_title = item.content_title,
         media_type = MediaType.XHTML.value,
         spine_item_p = True,
     )
+
+def _pkg_doc_add_cover_image(img_path: Path, manifest: dict[str, Any], curdir: Path) -> None:
+    find = False
+    for item in manifest['pkg_items']:
+        if item.src_path and item.src_path.samefile(img_path):
+            item.cover_image_p = True
+            find = True
+            break
+    if not find:
+        manifest['pkg_items'].append(_ManifestItem(
+            id = _next_id(manifest['pkg_items'][-1]),
+            href = 'items/' + str(img_path.relative_to(curdir)),
+            media_type = magic.from_file(str(img_path), mime=True),
+            src_path = img_path,
+            cover_image_p = True,
+        ))
+
+def _next_id(item: _ManifestItem) -> str:
+    return f'item{str(int(item.id[4:])+1)}'
+
 
 
 # Package directory utils
@@ -294,9 +355,9 @@ def _make_build_dir(stem: Path, *candidates: str) -> Path: # failable
     dest = stem / candidates[0]
     dotfile = dest / ('.' + app.__appname__)
     if not dest.exists():
-        dest.mkdir(0o755)
-        dotfile.touch(0o644)
-        logger.info(f'making a build dir: {dest.resolve()}')
+        logger.info(f'making a build dir\n  -- {str(dest)}')
+        dest.mkdir()
+        dotfile.touch()
         return dest
     if dotfile.exists():
         return dest

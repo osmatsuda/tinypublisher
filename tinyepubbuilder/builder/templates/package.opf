@@ -14,8 +14,15 @@
   </metadata>
   <manifest>
     <item href="navigation.xhtml" id="navigation" media-type="application/xhtml+xml" properties="nav"/>
+<%!
+import urllib.parse as URL
+%>
 % for item in pkg_items:
-    <item href="${item.href}" id="${item.id}" media-type="${item.media_type}"/>
+  % if item.cover_image_p:
+    <item href="${URL.quote(item.href)}" id="${item.id}" media-type="${item.media_type}" properties="cover-image"/>
+  % else:
+    <item href="${URL.quote(item.href)}" id="${item.id}" media-type="${item.media_type}"/>
+  % endif
 % endfor
   </manifest>
   <spine>

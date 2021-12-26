@@ -51,13 +51,16 @@ class FileListParser:
         spine_item |= _check_file_type(path, state)
 
         state.succ_col()
-        index_title = entry[state.col] if len(entry) > state.col else '-'
-        if index_title == '-' or index_title == '':
+        index_title = entry[state.col] if len(entry) > state.col else ''
+        if index_title == '-':
             if spine_item.__contains__('content_title'):
                 index_title = spine_item['content_title']
             else:
                 index_title = path.name
+                spine_item['content_title'] = index_title
         spine_item['index_title'] = index_title
+        if not spine_item.__contains__('content_title'):
+            spine_item['content_title'] = ''
 
         state.succ_col()
         content_caption = entry[state.col] if len(entry) > state.col else ''

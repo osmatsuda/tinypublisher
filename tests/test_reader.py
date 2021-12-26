@@ -23,9 +23,10 @@ class TestFileListParser(unittest.TestCase):
     def test_parse(self):
         spine = self.spec.spine
         self.assertEqual(spine[0].index_title, 'The first page')
-        self.assertEqual(spine[1].index_title, 'tinyepubbuilder sample file: 02')
-        self.assertEqual(spine[2].index_title, '03.svg')
-        self.assertEqual(spine[3].index_title, '04.svg')
+        self.assertEqual(spine[1].index_title, '')
+        self.assertEqual(spine[2].index_title, '03.svg: This is a co…')
+        self.assertEqual(spine[3].index_title, '')
+        self.assertEqual(spine[4].index_title, 'The last page')
         self.assertEqual(spine[3].content_caption, '04.svg')
         self.assertEqual(spine[4].content_caption, 'Goodbye<br/>Sayoonara')
 

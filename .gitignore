@@ -2,6 +2,7 @@ __pycache__
 idea
 examples
 build
+build.*
 *.egg-info
 *.png
 *.jpg

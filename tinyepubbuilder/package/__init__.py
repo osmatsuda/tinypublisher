@@ -4,7 +4,7 @@ from argparse import Namespace
 from pathlib import Path
 from uuid import uuid4, uuid5, NAMESPACE_DNS
 from typing import Optional
-import os
+import os, magic
 
 
 class MediaType(Enum):
@@ -44,6 +44,7 @@ class SpineItem:
     content_document: str
     media_type: str
     index_title: str
+    content_title: str
     content_caption: str
     content_lang: Optional[str] = None
     content_size: Optional[tuple[int, int]] = None
@@ -77,6 +78,11 @@ class PackageSpec:
             path = self.curdir / src
             if not path.is_file():
                 raise PackageError(f'"{src}" does not exist')
+
+            mime = magic.from_file(str(path), mime=True)
+            if not MediaType.contain(mime):
+                raise PackageError(f'The file type of "{path}" is not supported.')
+
         self._cover_image = path
 
     @property
@@ -92,6 +98,9 @@ class PackageSpec:
                 lng = os.environ.get('LANG')
                 if lng:
                     lng = lng.split('.')[0]
+                    lng = lng.split('_')[0]
+            if not lng:
+                lng = 'und'
             self._language_tag = lng
         else:
             self._language_tag = tag

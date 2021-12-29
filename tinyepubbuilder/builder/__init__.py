@@ -191,8 +191,9 @@ def _make_wrapping_doc(spec: PackageSpec, item: _ManifestItem, target: Path) -> 
 def _copy_item(src_item: _ManifestItem, target: Path) -> None:
     src = src_item.src_path
     if src is None: return
-    
-    logger.info(f'copying {src_item.href[len("items/"):]} to\n  -- {str(target)}')
+
+    src_loc = src_item.href[len('items/'):]
+    logger.info(f'copying "{src_loc}" to\n  -- {str(target)}')
     if not target.parent.is_dir():
         target.parent.mkdir(parents=True)
     if MediaType.predict_text(src_item.media_type):

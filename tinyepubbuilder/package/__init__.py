@@ -75,7 +75,7 @@ class PackageSpec:
     def cover_image(self, src: Optional[str]):
         path = None
         if src:
-            path = self.curdir / src
+            path = Path(src)
             if not path.is_file():
                 raise PackageError(f'"{src}" does not exist')
 

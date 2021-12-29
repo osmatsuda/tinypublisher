@@ -16,8 +16,8 @@ import urllib.parse as URL
 %>
 % for item in pkg_items:
         % if item.index_title:
-	<li><a href="${URL.quote(item.href)}">${item.index_title}</a></li>
-	% endif
+        <li><a href="${URL.quote(item.href)}">${item.index_title}</a></li>
+        % endif
 % endfor
       </ol>
     </nav>

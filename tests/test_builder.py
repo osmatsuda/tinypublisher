@@ -28,7 +28,7 @@ class TestBuilder(unittest.TestCase):
         self.spec.uuid = app.__appname__ + '.test'
         self.spec.author = 'fu'
         self.spec.book_title = 'test of tinypublisher'
-        self.spec.cover_image = 'cover.png'
+        self.spec.cover_image = str(pathlib.Path(__file__).parent) + '/assets/cover.png'
 
         self.builder.make_package_dirs(self.curdir)
         

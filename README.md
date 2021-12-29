@@ -15,7 +15,7 @@ pip install tinypublisher
 In the following, the `tinypublish` command makes the `test.epub` file from the jpeg file list.
 
 ```
-% ls *.jpg
+% ls examples/foo/*.jpg
 examples/foo/00 a.jpg	examples/foo/02 c.jpg	examples/foo/04 e.jpg
 examples/foo/01 b.jpg	examples/foo/03 d.jpg
 

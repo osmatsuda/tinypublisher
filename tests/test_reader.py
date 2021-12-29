@@ -44,7 +44,7 @@ class TestFileListParser(unittest.TestCase):
         with self.assertRaises(p.PackageError):
             self.spec.cover_image = '01.jpg'
 
-        self.spec.cover_image = '01.png'
+        self.spec.cover_image = str(pathlib.Path(__file__).parent) + '/assets/01.png'
         self.assertEqual(str(self.spec.cover_image.resolve()),
                          str(self.curdir.resolve() / '01.png'))
 

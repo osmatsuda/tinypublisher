@@ -1,7 +1,7 @@
 import sys, argparse, pathlib
 
-import tinyepubbuilder.reader as reader
-import tinyepubbuilder.builder as builder
+import tinypublisher.reader as reader
+import tinypublisher.builder as builder
 
 
 _FILE_LIST_DESCRIPTION_ = """\
@@ -31,7 +31,7 @@ File-list format:
 
 def _argparser():
     parser = argparse.ArgumentParser(
-        prog='tinyepubbuild',
+        prog='tinypublish',
         description='A tool to buid a EPUB package easily.',
         formatter_class=argparse.RawDescriptionHelpFormatter, 
         epilog=_FILE_LIST_DESCRIPTION_)

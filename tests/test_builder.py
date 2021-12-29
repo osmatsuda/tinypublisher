@@ -2,9 +2,9 @@ import unittest
 import xml.etree.ElementTree as ET
 import pathlib, zipfile, logging
 
-import tinyepubbuilder as app
-import tinyepubbuilder.builder as b
-import tinyepubbuilder.reader as r
+import tinypublisher as app
+import tinypublisher.builder as b
+import tinypublisher.reader as r
 
 
 class TestBuilder(unittest.TestCase):
@@ -27,7 +27,7 @@ class TestBuilder(unittest.TestCase):
         self.spec.language_tag = None
         self.spec.uuid = app.__appname__ + '.test'
         self.spec.author = 'fu'
-        self.spec.book_title = 'test of tinyepubbuilder'
+        self.spec.book_title = 'test of tinypublisher'
         self.spec.cover_image = 'cover.png'
 
         self.builder.make_package_dirs(self.curdir)

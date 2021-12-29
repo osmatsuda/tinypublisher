@@ -7,8 +7,8 @@ from mako.template import Template # type: ignore
 from typing import Union, Any, Generator, Optional
 import datetime, magic, urllib.parse
 
-import tinyepubbuilder as app
-from tinyepubbuilder.package import PackageSpec, SpineItem, MediaType
+import tinypublisher as app
+from tinypublisher.package import PackageSpec, SpineItem, MediaType
 
 import logging
 logger = logging.getLogger(f'{app.__appname__}.builder')

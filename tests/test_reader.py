@@ -1,8 +1,8 @@
 import unittest, logging
 import pathlib, uuid
 
-import tinyepubbuilder.reader as r
-import tinyepubbuilder.package as p
+import tinypublisher.reader as r
+import tinypublisher.package as p
 
 class TestFileListParser(unittest.TestCase):
     @classmethod

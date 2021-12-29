@@ -1,7 +1,7 @@
 import logging
 
-__version__ = "0.2.0"
-__appname__ = 'tinyepubbuilder'
+__version__ = "0.3.0"
+__appname__ = 'tinypublisher'
 
 # Logger
 logger = logging.getLogger(__appname__)

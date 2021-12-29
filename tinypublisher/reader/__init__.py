@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from typing import Optional, Any, Iterable
 import magic
 
-import tinyepubbuilder as app
-from tinyepubbuilder.package import PackageSpec, MediaType
+import tinypublisher as app
+from tinypublisher.package import PackageSpec, MediaType
 
 import logging
 logger = logging.getLogger(f'{app.__appname__}.reader')

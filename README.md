@@ -1,62 +1,62 @@
-# tinyepubbuilder
+# tinypublisher
 
 A tool to make a simple epub package easily.
 
 ## Installation
 
 ```
-pip install tinyepubbuilder
+pip install tinypublisher
 ```
 
 ## Usage
 
 ### Quick-Usage
 
-In the following, the `tinyepubbuild` command makes the `test.epub` file from the jpeg file list.
+In the following, the `tinypublish` command makes the `test.epub` file from the jpeg file list.
 
 ```
 % ls *.jpg
 examples/foo/00 a.jpg	examples/foo/02 c.jpg	examples/foo/04 e.jpg
 examples/foo/01 b.jpg	examples/foo/03 d.jpg
 
-% ls -1 examples/foo/*.jpg | tinyepubbuild test
-tinyepubbuilder.builder.INFO: making a build dir
+% ls -1 examples/foo/*.jpg | tinypublish test
+tinypublisher.builder.INFO: making a build dir
   -- build
-tinyepubbuilder.builder.INFO: making a Package Document
+tinypublisher.builder.INFO: making a Package Document
   -- build/test/book/package.opf
-tinyepubbuilder.builder.INFO: making a Navigation Document
+tinypublisher.builder.INFO: making a Navigation Document
   -- build/test/book/navigation.xhtml
-tinyepubbuilder.builder.INFO: copying "examples/foo/00 a.jpg" to
+tinypublisher.builder.INFO: copying "examples/foo/00 a.jpg" to
   -- build/test/book/items/examples/foo/00 a.jpg
-tinyepubbuilder.builder.INFO: making a page
+tinypublisher.builder.INFO: making a page
   -- build/test/book/items/examples/foo/00 a.jpg.xhtml
-tinyepubbuilder.builder.INFO: copying "examples/foo/01 b.jpg" to
+tinypublisher.builder.INFO: copying "examples/foo/01 b.jpg" to
   -- build/test/book/items/examples/foo/01 b.jpg
-tinyepubbuilder.builder.INFO: making a page
+tinypublisher.builder.INFO: making a page
   -- build/test/book/items/examples/foo/01 b.jpg.xhtml
-tinyepubbuilder.builder.INFO: copying "examples/foo/02 c.jpg" to
+tinypublisher.builder.INFO: copying "examples/foo/02 c.jpg" to
   -- build/test/book/items/examples/foo/02 c.jpg
-tinyepubbuilder.builder.INFO: making a page
+tinypublisher.builder.INFO: making a page
   -- build/test/book/items/examples/foo/02 c.jpg.xhtml
-tinyepubbuilder.builder.INFO: copying "examples/foo/03 d.jpg" to
+tinypublisher.builder.INFO: copying "examples/foo/03 d.jpg" to
   -- build/test/book/items/examples/foo/03 d.jpg
-tinyepubbuilder.builder.INFO: making a page
+tinypublisher.builder.INFO: making a page
   -- build/test/book/items/examples/foo/03 d.jpg.xhtml
-tinyepubbuilder.builder.INFO: copying "examples/foo/04 e.jpg" to
+tinypublisher.builder.INFO: copying "examples/foo/04 e.jpg" to
   -- build/test/book/items/examples/foo/04 e.jpg
-tinyepubbuilder.builder.INFO: making a page
+tinypublisher.builder.INFO: making a page
   -- build/test/book/items/examples/foo/04 e.jpg.xhtml
-tinyepubbuilder.builder.INFO: making a EPUB package
+tinypublisher.builder.INFO: making a EPUB package
   -- build/test.epub
 ```
 
-### tinyepubbuild --help
+### tinypublish --help
 
 ```
-usage: tinyepubbuild [-h] [--unzipped] [-c cover-image] [-t title]
-                     [-l language-tag] [-a author-name] [--id identifier]
-					 [--uuid dns-name] [-s file-list]
-                     package-name
+usage: tinypublish [-h] [--unzipped] [-c cover-image] [-t title]
+                   [-l language-tag] [-a author-name] [--id identifier]
+				   [--uuid dns-name] [-s file-list]
+                   package-name
 
 A tool to buid a EPUB package easily.
 
@@ -129,7 +129,7 @@ The first column is the path of the spine content, the second is the title used 
 This file exists at [tests/assets/spine.tsv](tests/assets/spine.tsv). And you can build this as the following:
 
 ```
-% tinyepubbuild test -t "my test" -c tests/assets/cover.png -s tests/assets/spine.tsv
+% tinypublish test -t "my test" -c tests/assets/cover.png -s tests/assets/spine.tsv
 ```
 
 then the EPUB Package will be made at `tests/assets/build/test.epub`.

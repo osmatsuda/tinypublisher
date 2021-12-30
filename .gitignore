@@ -1,6 +1,7 @@
 __pycache__
 idea
 examples
+dist
 build
 build.*
 *.egg-info

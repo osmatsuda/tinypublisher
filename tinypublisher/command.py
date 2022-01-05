@@ -80,6 +80,10 @@ def main():
 
         if not args.unzipped:
             packager.zipup()
+
+    except app.AppBaseError as e:
+        print(e)
+        
     except Exception as e:
         print(e)
         argparser.print_help()

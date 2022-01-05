@@ -72,7 +72,7 @@ class FileListParser:
 
     
 
-class BaseError(Exception):
+class BaseError(app.AppBaseError):
     def __init__(self, message: str, state: str):
         self.message = f'{message} [{state}]'
         

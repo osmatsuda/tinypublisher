@@ -1,6 +1,6 @@
 import logging
 
-__version__ = "0.3.1"
+__version__ = "0.3.2"
 __appname__ = 'tinypublisher'
 
 # Logger
@@ -10,3 +10,8 @@ _handler = logging.StreamHandler()
 _formatter = logging.Formatter('%(name)s.%(levelname)s: %(message)s')
 _handler.setFormatter(_formatter)
 logger.addHandler(_handler)
+
+
+class AppBaseError(Exception):
+    pass
+

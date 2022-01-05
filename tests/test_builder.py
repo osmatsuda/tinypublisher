@@ -10,6 +10,7 @@ import tinypublisher.reader as r
 class TestBuilder(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        r.logger.setLevel(logging.WARNING)
         b.logger.setLevel(logging.WARNING)
 
     def setUp(self):

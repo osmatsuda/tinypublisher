@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(f'{app.__appname__}.builder')
 
 
-class BuildingError(Exception):
+class BuilderError(app.AppBaseError):
     def __init__(self, message: str):
         self.message = message
 
@@ -255,6 +255,11 @@ def _make_pkg_doc_items(spine: list[SpineItem], curdir: Path) -> list[_ManifestI
     index_title_count = 0
     for spine_item in spine:
         doc_path = Path(spine_item.content_document)
+        if not doc_path.is_relative_to(curdir):
+            raise BuilderError(f'''All resouces should be in the descendant of the current directory.
+  -- {str(doc_path)}
+  -- curdir: {str(curdir)}''')
+        
         href = str(doc_path.relative_to(curdir))
         
         if (spine_item.media_type == MediaType.XHTML.value or
@@ -304,9 +309,15 @@ def _make_pkg_doc_items(spine: list[SpineItem], curdir: Path) -> list[_ManifestI
         if not spine_item.content_includes:
             continue
         for uri, mime in spine_item.content_includes:
+            uri_path = Path(uri)
+            if not uri_path.is_relative_to(curdir):
+                raise BuilderError(f'''All resouces should be in the descendant of the current directory.
+  -- {str(uri_path)}
+  -- curdir: {str(curdir)}''')
+
             items.add(_ManifestItem(
                 id = f'item{next(c)}',
-                href = 'items/' + str(Path(uri).relative_to(curdir)),
+                href = 'items/' + str(uri_path.relative_to(curdir)),
                 media_type = mime,
                 src_path = Path(uri),
             ))
@@ -331,6 +342,11 @@ def _pkg_doc_add_cover_image(img_path: Path, manifest: dict[str, Any], curdir: P
             find = True
             break
     if not find:
+        if not img_path.is_relative_to(curdir):
+            raise BuilderError(f'''All resouces should be in the descendant of the current directory.
+  -- {str(img_path)}
+  -- curdir: {curdir}''')
+        
         manifest['pkg_items'].append(_ManifestItem(
             id = _next_id(manifest['pkg_items'][-1]),
             href = 'items/' + str(img_path.relative_to(curdir)),
@@ -366,7 +382,7 @@ def _make_build_dir(stem: Path, *candidates: str) -> Path: # failable
         return _make_build_dir(stem, *candidates[1:])
 
     logger.warning(f'A build dir should have a file "{dotfile.name}".')
-    raise BuildingError(f'{app.__appname__} cannot make a build dir: {dest.resolve()}')
+    raise BuilderError(f'{app.__appname__} cannot make a build dir: {dest.resolve()}')
 
 def _make_container_file(path: Path, pkg_doc: Path) -> None:
     pkg_doc_loc = str(pkg_doc.relative_to(path.parent.parent))

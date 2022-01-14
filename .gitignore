@@ -5,6 +5,4 @@ dist
 build
 build.*
 *.egg-info
-*.png
-*.jpg
-*.gif
+

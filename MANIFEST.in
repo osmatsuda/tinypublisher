@@ -1,1 +1,2 @@
 include tinypublisher/builder/templates/*
+include py.typed

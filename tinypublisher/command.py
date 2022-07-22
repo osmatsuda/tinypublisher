@@ -55,8 +55,8 @@ def _argparser():
 
 def main():
     argparser = _argparser()
-    args = argparser.parse_args()
     try:
+        args = argparser.parse_args()
         file_list_parser = reader.FileListParser()
         if args.spine:
             if not args.spine.is_file():
